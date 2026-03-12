@@ -31,6 +31,7 @@ const loginNameInput = document.getElementById('login-name');
 const loginBtn = document.getElementById('login-btn');
 const activePlayerNameEl = document.getElementById('active-player-name');
 const logoutBtn = document.getElementById('logout-btn');
+const vehicleStage = document.getElementById('vehicle-stage');
 
 const STORAGE_KEYS = {
   language: 'language',
@@ -223,6 +224,7 @@ function setSessionVisibility(loggedIn) {
   loginScreen.classList.toggle('hidden', loggedIn);
   sessionScreen.classList.toggle('hidden', !loggedIn);
   setupScreen.classList.toggle('hidden', !loggedIn);
+  vehicleStage.classList.toggle('hidden', !loggedIn);
   if (!loggedIn) {
     [countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
   }

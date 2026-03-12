@@ -27,6 +27,38 @@ body {
   padding: 12px;
 }
 
+
+.vehicle-stage {
+  width: 100%;
+  min-height: 128px;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-stage__environment {
+  width: 100%;
+  min-height: 128px;
+  border-radius: 12px;
+  border: 1px solid #d7e4f4;
+  background: linear-gradient(180deg, #d8ebff 0%, #f2f8ff 65%, #e8f2ff 65%, #e8f2ff 100%);
+  box-shadow: inset 0 -12px 0 rgba(147, 183, 225, 0.24);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 14px;
+}
+
+.vehicle-stage__sprite {
+  width: clamp(72px, 18vw, 96px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid #bfd5f3;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #eef5ff 45%, #dceaff 100%);
+  box-shadow: 0 8px 14px rgba(17, 50, 86, 0.18);
+}
+
 .language-picker {
   display: flex;
   justify-content: flex-end;
@@ -306,4 +338,16 @@ li {
 .turbo-status.is-active {
   color: #9a5a00;
   font-weight: bold;
+}
+
+
+@media (max-width: 560px) {
+  .app {
+    padding: 10px;
+  }
+
+  .vehicle-stage,
+  .vehicle-stage__environment {
+    min-height: 112px;
+  }
 }
