@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'times-table-sprint-v2';
+const CACHE_VERSION = 'times-table-sprint-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -10,6 +10,9 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/maskable-192.png',
   './icons/maskable-512.png',
+  './assets/stage/environment-day.svg',
+  './assets/vehicles/pickup.svg',
+  './assets/vehicles/buggy.svg',
 ];
 
 self.addEventListener('install', (event) => {

@@ -27,6 +27,95 @@ body {
   padding: 12px;
 }
 
+
+.vehicle-stage {
+  width: 100%;
+  min-height: 148px;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vehicle-stage__environment {
+  width: 100%;
+  min-height: 148px;
+  border-radius: 12px;
+  border: 1px solid #d7e4f4;
+  background: #d8ebff url('./assets/stage/environment-day.svg') center/cover no-repeat;
+  box-shadow: inset 0 -12px 0 rgba(147, 183, 225, 0.24);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+
+.vehicle-stage__sprite {
+  --vehicle-color: #2c7be5;
+  width: clamp(88px, 22vw, 118px);
+  aspect-ratio: 1;
+  background-color: var(--vehicle-color);
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  filter: drop-shadow(0 8px 10px rgba(17, 50, 86, 0.28));
+  animation: vehicleIdle 1.6s ease-in-out infinite;
+  z-index: 1;
+}
+
+.vehicle-stage__sprite.is-pickup {
+  -webkit-mask-image: url('./assets/vehicles/pickup.svg');
+  mask-image: url('./assets/vehicles/pickup.svg');
+}
+
+.vehicle-stage__sprite.is-buggy {
+  -webkit-mask-image: url('./assets/vehicles/buggy.svg');
+  mask-image: url('./assets/vehicles/buggy.svg');
+}
+
+.vehicle-stage__sprite.is-driving {
+  animation: vehicleDrive 360ms linear infinite;
+}
+
+@keyframes vehicleIdle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes vehicleDrive {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1px);
+  }
+}
+
+.vehicle-customization {
+  margin-top: 12px;
+}
+
+.vehicle-customization label {
+  display: block;
+  margin-top: 8px;
+}
+
+#vehicle-color {
+  height: 48px;
+  padding: 6px;
+}
+
 .language-picker {
   display: flex;
   justify-content: flex-end;
@@ -306,4 +395,20 @@ li {
 .turbo-status.is-active {
   color: #9a5a00;
   font-weight: bold;
+}
+
+
+@media (max-width: 560px) {
+  .app {
+    padding: 10px;
+  }
+
+  .vehicle-stage,
+  .vehicle-stage__environment {
+    min-height: 128px;
+  }
+
+  .vehicle-stage__sprite {
+    width: clamp(84px, 28vw, 108px);
+  }
 }

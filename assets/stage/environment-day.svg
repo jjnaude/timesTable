@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#cfe8ff"/>
+      <stop offset="100%" stop-color="#f3f9ff"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dce8f7"/>
+      <stop offset="100%" stop-color="#c6d8f0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="360" fill="url(#sky)"/>
+  <circle cx="1030" cy="76" r="38" fill="#ffe37a"/>
+  <path d="M0 235 C180 200 360 205 540 230 C700 250 900 250 1200 220 L1200 360 L0 360 Z" fill="#daecd6"/>
+  <path d="M0 255 C240 220 460 230 730 255 C940 275 1080 270 1200 248 L1200 360 L0 360 Z" fill="#c9e2c6"/>
+  <rect y="280" width="1200" height="80" fill="url(#road)"/>
+  <g fill="#ffffff" opacity="0.9">
+    <ellipse cx="180" cy="70" rx="54" ry="22"/>
+    <ellipse cx="220" cy="66" rx="36" ry="16"/>
+    <ellipse cx="680" cy="50" rx="48" ry="18"/>
+    <ellipse cx="715" cy="46" rx="30" ry="12"/>
+  </g>
+</svg>
