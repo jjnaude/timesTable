@@ -206,3 +206,50 @@ li {
 .update-banner__actions button {
   margin-top: 0;
 }
+
+.fuel-panel {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #d7e4f4;
+  border-radius: 10px;
+  background: #f7fbff;
+}
+
+.fuel-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: bold;
+}
+
+.fuel-meter {
+  margin-top: 8px;
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: #dce7f6;
+  overflow: hidden;
+}
+
+.fuel-meter__fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #44c06a, #1ea55b);
+  transition: width 180ms ease-in-out, background 180ms ease-in-out;
+}
+
+.fuel-meter__fill.is-turbo {
+  background: linear-gradient(90deg, #ffd447, #ff9b3d);
+}
+
+.turbo-status {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  color: #4e5f76;
+}
+
+.turbo-status.is-active {
+  color: #9a5a00;
+  font-weight: bold;
+}
