@@ -64,3 +64,14 @@ Your app will be available at:
   - Correct: score +1, positive sound, next question.
   - Wrong: score -1, negative sound, same question repeats.
 - Top 5 scores are stored separately for each mode + table setting.
+
+## Voice answer feasibility (browser)
+
+Running basic speech recognition in-browser is viable for this app, with caveats:
+
+- **Fastest path:** use the Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`) to capture short spoken number answers.
+- **Best UX for kids:** a push-to-talk button per question (or auto-listen after each prompt), with confidence thresholding and a fallback text input.
+- **Main constraints:** browser support differences (best on Chromium), microphone permission prompts, background noise, and accent/language variability.
+- **Offline expectation:** Web Speech implementations are often cloud-backed; true offline recognition usually needs a heavier WASM model (e.g., Vosk/Whisper.cpp) and careful performance tuning.
+
+For this specific 2–12 multiplication game, speech is easier than open dictation because accepted outputs are a small closed set of numbers (0–144), so misrecognitions can be corrected using lightweight validation and nearest-match logic.

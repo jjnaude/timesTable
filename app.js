@@ -20,6 +20,8 @@ const turboStatusEl = document.getElementById('turbo-status');
 const questionEl = document.getElementById('question');
 const answerInput = document.getElementById('answer');
 const submitAnswerBtn = document.getElementById('submit-answer');
+const voiceRetryBtn = document.getElementById('voice-retry');
+const voiceStatusEl = document.getElementById('voice-status');
 const finalScoreEl = document.getElementById('final-score');
 const celebrationEl = document.getElementById('celebration');
 const gameFeedbackEl = document.getElementById('game-feedback');
@@ -245,6 +247,16 @@ function applyTranslations() {
 
   renderLeaderboard(gameConfig);
   updateFuelUi();
+
+  if (!SpeechRecognitionCtor) {
+    setVoiceStatus('hint.voiceUnsupported');
+  } else if (currentLanguage !== 'en') {
+    setVoiceStatus('hint.voiceLanguageRestricted');
+  } else if (speechPermissionDenied) {
+    setVoiceStatus('hint.voicePermissionDenied');
+  } else {
+    setVoiceStatus('hint.voiceIdle');
+  }
 }
 
 function updateInstallButtonVisibility() {
@@ -360,6 +372,11 @@ let currentQuestion = null;
 let lastQuestionKey = null;
 let currentStreak = 0;
 
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let speechRecognition = null;
+let isSpeechActive = false;
+let autoListenEnabled = true;
+let speechPermissionDenied = false;
 
 const STREAK_MILESTONES = [5, 10, 15, 20];
 const SCORE_MILESTONES = [10, 20, 30, 40, 50];
@@ -419,6 +436,7 @@ function makeQuestion(config, allowRepeat = false) {
   questionEl.textContent = `${question.table} × ${question.multiplier} = ?`;
   answerInput.value = '';
   answerInput.focus();
+  setTimeout(startAutoListening, 220);
 }
 
 function beep({ frequency, duration = 0.18, type = 'sine', volume = 0.06 }) {
@@ -448,6 +466,143 @@ function fanfareSound() {
   const notes = [523, 659, 784, 1046];
   notes.forEach((freq, i) => {
     setTimeout(() => beep({ frequency: freq, duration: 0.18, type: 'sawtooth', volume: 0.08 }), i * 130);
+  });
+}
+
+
+function setVoiceStatus(messageKey, params = {}) {
+  if (!voiceStatusEl) return;
+  voiceStatusEl.textContent = t(messageKey, params);
+}
+
+function isSpeechUsable() {
+  return Boolean(SpeechRecognitionCtor) && currentLanguage === 'en' && !speechPermissionDenied;
+}
+
+function parseEnglishNumberWords(textValue) {
+  const normalized = textValue.toLowerCase().replace(/[^a-z\s-]/g, ' ').replace(/-/g, ' ');
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+
+  const units = {
+    zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  };
+  const teens = {
+    ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+    sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+  };
+  const tens = {
+    twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+  };
+
+  let current = 0;
+
+  for (const token of tokens) {
+    if (token === 'and') continue;
+    if (token in units) {
+      current += units[token];
+      continue;
+    }
+    if (token in teens) {
+      current += teens[token];
+      continue;
+    }
+    if (token in tens) {
+      current += tens[token];
+      continue;
+    }
+    if (token === 'hundred') {
+      if (current === 0) current = 1;
+      current *= 100;
+      continue;
+    }
+    return null;
+  }
+
+  return current;
+}
+
+function parseSpokenAnswer(transcript) {
+  const numericMatch = transcript.match(/\d+/);
+  if (numericMatch) return Number(numericMatch[0]);
+  return parseEnglishNumberWords(transcript);
+}
+
+function stopSpeechRecognition() {
+  if (!speechRecognition || !isSpeechActive) return;
+  try {
+    speechRecognition.stop();
+  } catch {
+    // Ignore stop errors when recognition is already stopping.
+  }
+}
+
+function startAutoListening() {
+  if (!autoListenEnabled || !isSpeechUsable() || !speechRecognition) {
+    if (!SpeechRecognitionCtor) {
+      setVoiceStatus('hint.voiceUnsupported');
+    } else if (currentLanguage !== 'en') {
+      setVoiceStatus('hint.voiceLanguageRestricted');
+    } else if (speechPermissionDenied) {
+      setVoiceStatus('hint.voicePermissionDenied');
+    }
+    return;
+  }
+
+  if (gameScreen.classList.contains('hidden') || !currentQuestion || secondsLeft <= 0) return;
+  if (isSpeechActive) return;
+
+  setVoiceStatus('hint.voiceListening');
+
+  try {
+    speechRecognition.start();
+  } catch {
+    // Ignore invalid start attempts; next question retry will restart listening.
+  }
+}
+
+function initializeSpeechRecognition() {
+  if (!SpeechRecognitionCtor) {
+    setVoiceStatus('hint.voiceUnsupported');
+    return;
+  }
+
+  speechRecognition = new SpeechRecognitionCtor();
+  speechRecognition.continuous = false;
+  speechRecognition.interimResults = false;
+  speechRecognition.maxAlternatives = 1;
+  speechRecognition.lang = 'en-US';
+
+  speechRecognition.addEventListener('start', () => {
+    isSpeechActive = true;
+  });
+
+  speechRecognition.addEventListener('end', () => {
+    isSpeechActive = false;
+  });
+
+  speechRecognition.addEventListener('result', (event) => {
+    const transcript = event.results?.[0]?.[0]?.transcript?.trim() || '';
+    const spokenValue = parseSpokenAnswer(transcript);
+
+    if (spokenValue === null || spokenValue < 0 || spokenValue > 144) {
+      setVoiceStatus('hint.voiceUnclear', { text: transcript || '...' });
+      return;
+    }
+
+    answerInput.value = String(spokenValue);
+    checkAnswer();
+  });
+
+  speechRecognition.addEventListener('error', (event) => {
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      speechPermissionDenied = true;
+      setVoiceStatus('hint.voicePermissionDenied');
+      return;
+    }
+
+    if (event.error === 'aborted') return;
+    setVoiceStatus('hint.voiceIdle');
   });
 }
 
@@ -507,6 +662,7 @@ function checkAnswer() {
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
     answerInput.value = '';
     answerInput.focus();
+    setTimeout(startAutoListening, 220);
   }
 }
 
@@ -525,6 +681,8 @@ function maybeAutoCheckAnswer() {
 }
 
 function finishGame() {
+  autoListenEnabled = false;
+  stopSpeechRecognition();
   clearInterval(timerInterval);
   timerInterval = null;
   showOnly(resultScreen);
@@ -558,6 +716,7 @@ function finishGame() {
 }
 
 function startGameRound() {
+  autoListenEnabled = true;
   score = 0;
   secondsLeft = 60;
   fuel = 0;
@@ -638,10 +797,12 @@ answerInput.addEventListener('input', maybeAutoCheckAnswer);
 languageSelect.addEventListener('change', () => {
   currentLanguage = languageSelect.value;
   localStorage.setItem(STORAGE_KEYS.language, currentLanguage);
+  if (currentLanguage !== 'en') stopSpeechRecognition();
   applyTranslations();
 });
 
 submitAnswerBtn.addEventListener('click', checkAnswer);
+voiceRetryBtn.addEventListener('click', startAutoListening);
 answerInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
@@ -691,6 +852,7 @@ maxTableSelect.addEventListener('change', () => {
   renderLeaderboard(gameConfig);
 });
 
+initializeSpeechRecognition();
 applyTranslations();
 updateInstallButtonVisibility();
 
