@@ -9,7 +9,6 @@ const timeLeftEl = document.getElementById('time-left');
 const scoreEl = document.getElementById('score');
 const questionEl = document.getElementById('question');
 const answerInput = document.getElementById('answer');
-const submitAnswerBtn = document.getElementById('submit-answer');
 const finalScoreEl = document.getElementById('final-score');
 const celebrationEl = document.getElementById('celebration');
 const nameForm = document.getElementById('name-form');
@@ -168,6 +167,20 @@ function checkAnswer() {
   }
 }
 
+function significantDigitCount(value) {
+  const digitsOnly = value.replace(/\D/g, '');
+  const withoutLeadingZeros = digitsOnly.replace(/^0+/, '');
+  return withoutLeadingZeros.length;
+}
+
+function maybeAutoCheckAnswer() {
+  if (!currentQuestion) return;
+  const expectedDigits = String(currentQuestion.answer).length;
+  if (significantDigitCount(answerInput.value) >= expectedDigits) {
+    checkAnswer();
+  }
+}
+
 function finishGame() {
   clearInterval(timerInterval);
   timerInterval = null;
@@ -239,7 +252,7 @@ startBtn.addEventListener('click', () => {
   startCountdownThenGame();
 });
 
-submitAnswerBtn.addEventListener('click', checkAnswer);
+answerInput.addEventListener('input', maybeAutoCheckAnswer);
 answerInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
