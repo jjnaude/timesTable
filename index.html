@@ -11,55 +11,60 @@
   </head>
   <body>
     <main class="app">
-      <h1>Times Table Sprint</h1>
+      <div class="language-picker">
+        <label for="language-select" data-i18n="label.language">Language</label>
+        <select id="language-select" aria-label="Language"></select>
+      </div>
+
+      <h1 data-i18n="title.app">Times Table Sprint</h1>
       <button id="install-btn" class="secondary hidden" type="button">Install app</button>
 
       <section id="setup-screen" class="card">
-        <h2>Choose your challenge</h2>
-        <label for="max-table">Highest times table (2-12)</label>
+        <h2 data-i18n="title.challenge">Choose your challenge</h2>
+        <label for="max-table" data-i18n="label.maxTable">Highest times table (2-12)</label>
         <select id="max-table" aria-label="Highest times table"></select>
 
         <fieldset>
-          <legend>Mode</legend>
-          <label><input type="radio" name="mode" value="single" checked /> Single table only</label>
-          <label><input type="radio" name="mode" value="mixed" /> Mixed tables (2 to selected)</label>
+          <legend data-i18n="legend.mode">Mode</legend>
+          <label><input type="radio" name="mode" value="single" checked /> <span data-i18n="mode.single">Single table only</span></label>
+          <label><input type="radio" name="mode" value="mixed" /> <span data-i18n="mode.mixed">Mixed tables (2 to selected)</span></label>
         </fieldset>
 
-        <button id="start-btn" class="primary">Start 1-minute sprint</button>
+        <button id="start-btn" class="primary" data-i18n="button.start">Start 1-minute sprint</button>
       </section>
 
       <section id="countdown-screen" class="card hidden" aria-live="polite">
-        <h2>Get ready!</h2>
+        <h2 data-i18n="title.ready">Get ready!</h2>
         <div id="countdown" class="countdown">3</div>
       </section>
 
       <section id="game-screen" class="card hidden" aria-live="polite">
         <div class="stats">
-          <div>Time: <strong id="time-left">60</strong>s</div>
-          <div>Score: <strong id="score">0</strong></div>
+          <div><span data-i18n="label.time">Time</span>: <strong id="time-left">60</strong>s</div>
+          <div><span data-i18n="label.score">Score</span>: <strong id="score">0</strong></div>
         </div>
         <div id="question" class="question">2 × 3 = ?</div>
         <input id="answer" type="number" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
-        <button id="submit-answer" class="primary">Submit</button>
-        <p class="hint">Press Enter to answer quickly!</p>
+        <button id="submit-answer" class="primary" data-i18n="button.submit">Submit</button>
+        <p class="hint" data-i18n="hint.enter">Press Enter to answer quickly!</p>
       </section>
 
       <section id="result-screen" class="card hidden">
-        <h2>Time's up!</h2>
-        <p>Your final score: <strong id="final-score"></strong></p>
-        <div id="celebration" class="hidden celebration">⭐ NEW TOP 5! ⭐</div>
+        <h2 data-i18n="title.timesUp">Time's up!</h2>
+        <p><span data-i18n="label.finalScore">Your final score:</span> <strong id="final-score"></strong></p>
+        <div id="celebration" class="hidden celebration" data-i18n="label.topFive">⭐ NEW TOP 5! ⭐</div>
 
         <form id="name-form" class="hidden">
-          <label for="player-name">You made the leaderboard! Enter your name:</label>
+          <label for="player-name" data-i18n="label.enterName">You made the leaderboard! Enter your name:</label>
           <input id="player-name" maxlength="20" required />
-          <button type="submit" class="primary">Save score</button>
+          <button type="submit" class="primary" data-i18n="button.save">Save score</button>
         </form>
 
-        <button id="play-again">Play again</button>
+        <button id="play-again" data-i18n="button.playAgain">Play again</button>
       </section>
 
       <section id="leaderboard-screen" class="card">
-        <h2>Leaderboard</h2>
+        <h2 data-i18n="title.leaderboard">Leaderboard</h2>
         <p id="leaderboard-title">Single 2-times table</p>
         <ol id="leaderboard-list"></ol>
       </section>
