@@ -22,7 +22,8 @@ const answerInput = document.getElementById('answer');
 const submitAnswerBtn = document.getElementById('submit-answer');
 const finalScoreEl = document.getElementById('final-score');
 const celebrationEl = document.getElementById('celebration');
-const unlockMessageEl = document.getElementById('unlock-message');
+const gameFeedbackEl = document.getElementById('game-feedback');
+const resultFeedbackEl = document.getElementById('result-feedback');
 const playAgainBtn = document.getElementById('play-again');
 const leaderboardTitle = document.getElementById('leaderboard-title');
 const leaderboardList = document.getElementById('leaderboard-list');
@@ -357,6 +358,24 @@ let secondsLeft = 60;
 let timerInterval = null;
 let currentQuestion = null;
 let lastQuestionKey = null;
+let currentStreak = 0;
+
+
+const STREAK_MILESTONES = [5, 10, 15, 20];
+const SCORE_MILESTONES = [10, 20, 30, 40, 50];
+
+function setFeedbackMessage(element, message = '', state = '') {
+  if (!element) return;
+  element.textContent = message;
+  element.className = 'feedback';
+  if (state) element.classList.add(`feedback--${state}`);
+  element.classList.toggle('hidden', !message);
+}
+
+function getAchievedMilestones(currentValue, milestones, previousValue) {
+  return milestones.filter((milestone) => currentValue >= milestone && previousValue < milestone);
+}
+
 let fuel = 0;
 let turboRemaining = 0;
 let consecutiveCorrect = 0;
@@ -437,7 +456,12 @@ function checkAnswer() {
   const val = Number(answerInput.value);
   if (Number.isNaN(val)) return;
 
+  const previousScore = score;
+  const previousStreak = currentStreak;
+
   if (val === currentQuestion.answer) {
+    score += 1;
+    currentStreak += 1;
     consecutiveCorrect += 1;
     let pointsAwarded = 1;
 
@@ -457,14 +481,30 @@ function checkAnswer() {
     scoreEl.textContent = String(score);
     updateFuelUi();
     successSound();
+
+    const streakHits = getAchievedMilestones(currentStreak, STREAK_MILESTONES, previousStreak);
+    const scoreHits = getAchievedMilestones(score, SCORE_MILESTONES, previousScore);
+
+    if (streakHits.length) {
+      const milestone = streakHits[streakHits.length - 1];
+      setFeedbackMessage(gameFeedbackEl, t('feedback.streakMilestone', { n: milestone }), 'milestone');
+    } else if (scoreHits.length) {
+      const milestone = scoreHits[scoreHits.length - 1];
+      setFeedbackMessage(gameFeedbackEl, t('feedback.scoreMilestone', { n: milestone }), 'milestone');
+    } else {
+      setFeedbackMessage(gameFeedbackEl, t('feedback.success', { n: score }), 'success');
+    }
+
     makeQuestion(gameConfig, false);
   } else {
     consecutiveCorrect = 0;
     fuel = Math.max(0, fuel - 1);
     score -= 1;
+    currentStreak = 0;
     scoreEl.textContent = String(score);
     updateFuelUi();
     failSound();
+    setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
     answerInput.value = '';
     answerInput.focus();
   }
@@ -490,7 +530,7 @@ function finishGame() {
   showOnly(resultScreen);
   finalScoreEl.textContent = String(score);
   celebrationEl.classList.add('hidden');
-  unlockMessageEl.classList.add('hidden');
+  setFeedbackMessage(resultFeedbackEl);
 
   const board = getLeaderboard(gameConfig);
   const qualifies = board.length < 5 || score > board[board.length - 1].score;
@@ -504,9 +544,14 @@ function finishGame() {
 
   const unlockedLevel = unlockNextLevelForScore(gameConfig, score);
   if (unlockedLevel) {
-    unlockMessageEl.textContent = t('label.unlocked', { level: settingLabel(unlockedLevel) });
-    unlockMessageEl.classList.remove('hidden');
+    setFeedbackMessage(resultFeedbackEl, t('feedback.unlockMilestone', { level: settingLabel(unlockedLevel) }), 'unlock');
     applyLevelLocks();
+  } else {
+    const scoreHits = getAchievedMilestones(score, SCORE_MILESTONES, 0);
+    if (scoreHits.length) {
+      const milestone = scoreHits[scoreHits.length - 1];
+      setFeedbackMessage(resultFeedbackEl, t('feedback.scoreMilestone', { n: milestone }), 'milestone');
+    }
   }
 
   renderLeaderboard(gameConfig);
@@ -521,6 +566,8 @@ function startGameRound() {
   scoreEl.textContent = '0';
   timeLeftEl.textContent = '60';
   lastQuestionKey = null;
+  currentStreak = 0;
+  setFeedbackMessage(gameFeedbackEl);
   updateFuelUi();
 
   showOnly(gameScreen);
