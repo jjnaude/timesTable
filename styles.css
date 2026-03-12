@@ -171,3 +171,17 @@ ol {
 li {
   margin: 4px 0;
 }
+
+#session-screen p {
+  margin-top: 0;
+}
+
+.unlock-message {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #e7f7ec;
+  color: #1d7b46;
+  font-weight: bold;
+  text-align: center;
+}

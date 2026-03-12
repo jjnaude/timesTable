@@ -1,6 +1,9 @@
 const maxTableSelect = document.getElementById('max-table');
 const languageSelect = document.getElementById('language-select');
 const startBtn = document.getElementById('start-btn');
+const installBtn = document.getElementById('install-btn');
+const loginScreen = document.getElementById('login-screen');
+const sessionScreen = document.getElementById('session-screen');
 const setupScreen = document.getElementById('setup-screen');
 const countdownScreen = document.getElementById('countdown-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -10,15 +13,30 @@ const timeLeftEl = document.getElementById('time-left');
 const scoreEl = document.getElementById('score');
 const questionEl = document.getElementById('question');
 const answerInput = document.getElementById('answer');
+const submitAnswerBtn = document.getElementById('submit-answer');
 const finalScoreEl = document.getElementById('final-score');
 const celebrationEl = document.getElementById('celebration');
-const nameForm = document.getElementById('name-form');
-const playerNameInput = document.getElementById('player-name');
+const unlockMessageEl = document.getElementById('unlock-message');
 const playAgainBtn = document.getElementById('play-again');
 const leaderboardTitle = document.getElementById('leaderboard-title');
 const leaderboardList = document.getElementById('leaderboard-list');
+const loginNameInput = document.getElementById('login-name');
+const loginBtn = document.getElementById('login-btn');
+const activePlayerNameEl = document.getElementById('active-player-name');
+const logoutBtn = document.getElementById('logout-btn');
 
-let currentLanguage = localStorage.getItem('language') || 'en';
+const STORAGE_KEYS = {
+  language: 'language',
+  activeUser: 'activeUser',
+};
+
+const LEVEL_SEQUENCE = [{ mode: 'single', maxTable: 2 }];
+for (let i = 3; i <= 12; i += 1) {
+  LEVEL_SEQUENCE.push({ mode: 'single', maxTable: i });
+  LEVEL_SEQUENCE.push({ mode: 'mixed', maxTable: i });
+}
+
+let currentLanguage = localStorage.getItem(STORAGE_KEYS.language) || 'en';
 if (!TRANSLATIONS[currentLanguage]) currentLanguage = 'en';
 
 function t(key, params = {}) {
@@ -35,8 +53,189 @@ Object.entries(TRANSLATIONS).forEach(([code, dict]) => {
 });
 languageSelect.value = currentLanguage;
 
-const installBtn = document.getElementById('install-btn');
 let deferredInstallPrompt = null;
+let activeUser = localStorage.getItem(STORAGE_KEYS.activeUser) || null;
+
+function normalizeName(name) {
+  return (name || '').trim().toLowerCase();
+}
+
+function progressKey(name) {
+  return `progress:${normalizeName(name)}`;
+}
+
+function configKey(config) {
+  return `${config.mode}-${config.maxTable}`;
+}
+
+
+function getUserProgress(name) {
+  const normalized = normalizeName(name);
+  if (!normalized) return new Set([configKey({ mode: 'single', maxTable: 2 })]);
+  const raw = localStorage.getItem(progressKey(normalized));
+  if (!raw) return new Set([configKey({ mode: 'single', maxTable: 2 })]);
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) {
+      return new Set([configKey({ mode: 'single', maxTable: 2 })]);
+    }
+    return new Set(parsed);
+  } catch {
+    return new Set([configKey({ mode: 'single', maxTable: 2 })]);
+  }
+}
+
+function saveUserProgress(name, unlockedLevels) {
+  const normalized = normalizeName(name);
+  if (!normalized) return;
+  localStorage.setItem(progressKey(normalized), JSON.stringify([...unlockedLevels]));
+}
+
+function unlockNextLevelForScore(config, currentScore) {
+  if (!activeUser || currentScore < 20) return null;
+
+  const currentKey = configKey(config);
+  const index = LEVEL_SEQUENCE.findIndex((level) => configKey(level) === currentKey);
+  if (index === -1) return null;
+
+  const next = LEVEL_SEQUENCE[index + 1];
+  if (!next) return null;
+
+  const unlockedLevels = getUserProgress(activeUser);
+  const nextKey = configKey(next);
+  if (unlockedLevels.has(nextKey)) return null;
+
+  unlockedLevels.add(nextKey);
+  saveUserProgress(activeUser, unlockedLevels);
+  return next;
+}
+
+function getLeaderboard(config) {
+  const raw = localStorage.getItem(`leaderboard:${configKey(config)}`);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLeaderboard(config, entries) {
+  localStorage.setItem(`leaderboard:${configKey(config)}`, JSON.stringify(entries.slice(0, 5)));
+}
+
+function settingLabel(config) {
+  return config.mode === 'single'
+    ? t('leaderboard.single', { max: config.maxTable })
+    : t('leaderboard.mixed', { max: config.maxTable });
+}
+
+function renderLeaderboard(config) {
+  const rows = getLeaderboard(config);
+  leaderboardTitle.textContent = settingLabel(config);
+  leaderboardList.innerHTML = '';
+  if (!rows.length) {
+    const li = document.createElement('li');
+    li.textContent = t('leaderboard.empty');
+    leaderboardList.appendChild(li);
+    return;
+  }
+
+  rows.forEach((row) => {
+    const li = document.createElement('li');
+    li.textContent = `${row.name}: ${row.score}`;
+    leaderboardList.appendChild(li);
+  });
+}
+
+function tablePool(config) {
+  const values = [];
+  if (config.mode === 'single') return [config.maxTable];
+  for (let tVal = 2; tVal <= config.maxTable; tVal += 1) values.push(tVal);
+  return values;
+}
+
+function showOnly(screen) {
+  [setupScreen, countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
+  screen.classList.remove('hidden');
+}
+
+function getMode() {
+  return document.querySelector('input[name="mode"]:checked').value;
+}
+
+function getUnlockedLevels() {
+  return activeUser ? getUserProgress(activeUser) : new Set();
+}
+
+function ensureGameConfigIsUnlocked() {
+  const unlocked = getUnlockedLevels();
+  if (unlocked.has(configKey(gameConfig))) return;
+  const firstUnlocked = LEVEL_SEQUENCE.find((level) => unlocked.has(configKey(level)));
+  gameConfig = firstUnlocked || { mode: 'single', maxTable: 2 };
+}
+
+function syncSelectorsFromGameConfig() {
+  maxTableSelect.value = String(gameConfig.maxTable);
+  const targetMode = gameConfig.mode;
+  document.querySelectorAll('input[name="mode"]').forEach((el) => {
+    el.checked = el.value === targetMode;
+  });
+}
+
+function applyLevelLocks() {
+  const unlocked = getUnlockedLevels();
+
+  document.querySelectorAll('input[name="mode"]').forEach((modeInput) => {
+    const hasUnlockedForMode = LEVEL_SEQUENCE.some(
+      (level) => level.mode === modeInput.value && unlocked.has(configKey(level)),
+    );
+    modeInput.disabled = !hasUnlockedForMode;
+  });
+
+  Array.from(maxTableSelect.options).forEach((opt) => {
+    const value = Number(opt.value);
+    const singleUnlocked = unlocked.has(configKey({ mode: 'single', maxTable: value }));
+    const mixedUnlocked = unlocked.has(configKey({ mode: 'mixed', maxTable: value }));
+    opt.disabled = !(singleUnlocked || mixedUnlocked);
+  });
+
+  const selectedMode = getMode();
+  const selectedMax = Number(maxTableSelect.value);
+  const selectedUnlocked = unlocked.has(configKey({ mode: selectedMode, maxTable: selectedMax }));
+  if (!selectedUnlocked) {
+    ensureGameConfigIsUnlocked();
+    syncSelectorsFromGameConfig();
+  }
+}
+
+function setSessionVisibility(loggedIn) {
+  loginScreen.classList.toggle('hidden', loggedIn);
+  sessionScreen.classList.toggle('hidden', !loggedIn);
+  setupScreen.classList.toggle('hidden', !loggedIn);
+  if (!loggedIn) {
+    [countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
+  }
+}
+
+function applyTranslations() {
+  document.documentElement.lang = currentLanguage;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+
+  maxTableSelect.setAttribute('aria-label', t('aria.highestTimesTable'));
+  answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
+  languageSelect.setAttribute('aria-label', t('aria.language'));
+  loginNameInput.setAttribute('aria-label', t('aria.loginName'));
+
+  if (countdownEl.textContent === TRANSLATIONS.en['countdown.go'] || countdownEl.textContent === TRANSLATIONS.af['countdown.go']) {
+    countdownEl.textContent = t('countdown.go');
+  }
+
+  renderLeaderboard(gameConfig);
+}
 
 function updateInstallButtonVisibility() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -72,102 +271,19 @@ installBtn.addEventListener('click', async () => {
   updateInstallButtonVisibility();
 });
 
-
 for (let i = 2; i <= 12; i += 1) {
   const option = document.createElement('option');
   option.value = String(i);
   option.textContent = `${i}`;
   maxTableSelect.appendChild(option);
 }
-maxTableSelect.value = '5';
 
-let gameConfig = { maxTable: 5, mode: 'single' };
+let gameConfig = { maxTable: 2, mode: 'single' };
 let score = 0;
 let secondsLeft = 60;
 let timerInterval = null;
 let currentQuestion = null;
 let lastQuestionKey = null;
-let pendingHighScore = null;
-
-function applyTranslations() {
-  document.documentElement.lang = currentLanguage;
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    el.textContent = t(el.dataset.i18n);
-  });
-
-  maxTableSelect.setAttribute('aria-label', t('aria.highestTimesTable'));
-  answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
-  languageSelect.setAttribute('aria-label', t('aria.language'));
-
-  if (countdownEl.textContent === TRANSLATIONS.en['countdown.go'] || countdownEl.textContent === TRANSLATIONS.af['countdown.go']) {
-    countdownEl.textContent = t('countdown.go');
-  }
-
-  renderLeaderboard(gameConfig);
-}
-
-function showOnly(screen) {
-  [setupScreen, countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
-  screen.classList.remove('hidden');
-}
-
-function getMode() {
-  return document.querySelector('input[name="mode"]:checked').value;
-}
-
-function settingKey(config) {
-  return `${config.mode}-${config.maxTable}`;
-}
-
-function settingLabel(config) {
-  return config.mode === 'single'
-    ? t('leaderboard.single', { max: config.maxTable })
-    : t('leaderboard.mixed', { max: config.maxTable });
-}
-
-function getLeaderboard(config) {
-  const raw = localStorage.getItem(`leaderboard:${settingKey(config)}`);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveLeaderboard(config, entries) {
-  localStorage.setItem(`leaderboard:${settingKey(config)}`, JSON.stringify(entries.slice(0, 5)));
-}
-
-function renderLeaderboard(config) {
-  const rows = getLeaderboard(config);
-  leaderboardTitle.textContent = settingLabel(config);
-  leaderboardList.innerHTML = '';
-  if (!rows.length) {
-    const li = document.createElement('li');
-    li.textContent = t('leaderboard.empty');
-    leaderboardList.appendChild(li);
-    return;
-  }
-
-  rows.forEach((row) => {
-    const li = document.createElement('li');
-    li.textContent = `${row.name}: ${row.score}`;
-    leaderboardList.appendChild(li);
-  });
-}
-
-function tablePool(config) {
-  const start = 2;
-  const end = config.maxTable;
-  const values = [];
-  if (config.mode === 'single') {
-    return [config.maxTable];
-  }
-  for (let tVal = start; tVal <= end; tVal += 1) values.push(tVal);
-  return values;
-}
 
 function makeQuestion(config, allowRepeat = false) {
   const tables = tablePool(config);
@@ -261,19 +377,23 @@ function finishGame() {
   showOnly(resultScreen);
   finalScoreEl.textContent = String(score);
   celebrationEl.classList.add('hidden');
-  nameForm.classList.add('hidden');
+  unlockMessageEl.classList.add('hidden');
 
   const board = getLeaderboard(gameConfig);
   const qualifies = board.length < 5 || score > board[board.length - 1].score;
   if (qualifies) {
-    pendingHighScore = { config: { ...gameConfig }, score };
+    board.push({ name: activeUser, score });
+    board.sort((a, b) => b.score - a.score);
+    saveLeaderboard(gameConfig, board);
     celebrationEl.classList.remove('hidden');
-    nameForm.classList.remove('hidden');
     fanfareSound();
-    playerNameInput.value = '';
-    playerNameInput.focus();
-  } else {
-    pendingHighScore = null;
+  }
+
+  const unlockedLevel = unlockNextLevelForScore(gameConfig, score);
+  if (unlockedLevel) {
+    unlockMessageEl.textContent = t('label.unlocked', { level: settingLabel(unlockedLevel) });
+    unlockMessageEl.classList.remove('hidden');
+    applyLevelLocks();
   }
 
   renderLeaderboard(gameConfig);
@@ -317,11 +437,35 @@ function startCountdownThenGame() {
   }, 1000);
 }
 
+function login(name) {
+  activeUser = name.trim();
+  localStorage.setItem(STORAGE_KEYS.activeUser, activeUser);
+  activePlayerNameEl.textContent = activeUser;
+
+  const unlockedLevels = getUserProgress(activeUser);
+  saveUserProgress(activeUser, unlockedLevels);
+  ensureGameConfigIsUnlocked();
+  syncSelectorsFromGameConfig();
+  applyLevelLocks();
+  renderLeaderboard(gameConfig);
+  setSessionVisibility(true);
+}
+
+function logout() {
+  activeUser = null;
+  localStorage.removeItem(STORAGE_KEYS.activeUser);
+  setSessionVisibility(false);
+  loginNameInput.value = '';
+  loginNameInput.focus();
+}
+
 startBtn.addEventListener('click', () => {
   gameConfig = {
     maxTable: Number(maxTableSelect.value),
     mode: getMode(),
   };
+  ensureGameConfigIsUnlocked();
+  syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
   startCountdownThenGame();
 });
@@ -329,7 +473,7 @@ startBtn.addEventListener('click', () => {
 answerInput.addEventListener('input', maybeAutoCheckAnswer);
 languageSelect.addEventListener('change', () => {
   currentLanguage = languageSelect.value;
-  localStorage.setItem('language', currentLanguage);
+  localStorage.setItem(STORAGE_KEYS.language, currentLanguage);
   applyTranslations();
 });
 
@@ -341,40 +485,53 @@ answerInput.addEventListener('keydown', (event) => {
   }
 });
 
-nameForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  if (!pendingHighScore) return;
-  const name = playerNameInput.value.trim() || t('default.player');
-  const entries = getLeaderboard(pendingHighScore.config);
-  entries.push({ name, score: pendingHighScore.score });
-  entries.sort((a, b) => b.score - a.score);
-  saveLeaderboard(pendingHighScore.config, entries);
-  pendingHighScore = null;
-  nameForm.classList.add('hidden');
-  renderLeaderboard(gameConfig);
-});
-
 playAgainBtn.addEventListener('click', () => {
   showOnly(setupScreen);
   gameConfig = {
     maxTable: Number(maxTableSelect.value),
     mode: getMode(),
   };
+  ensureGameConfigIsUnlocked();
+  syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
 });
+
+loginBtn.addEventListener('click', () => {
+  const name = loginNameInput.value.trim();
+  if (!name) return;
+  login(name);
+});
+
+loginNameInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    loginBtn.click();
+  }
+});
+
+logoutBtn.addEventListener('click', logout);
 
 document.querySelectorAll('input[name="mode"]').forEach((el) => {
   el.addEventListener('change', () => {
     gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode() };
+    ensureGameConfigIsUnlocked();
+    syncSelectorsFromGameConfig();
     renderLeaderboard(gameConfig);
   });
 });
 
 maxTableSelect.addEventListener('change', () => {
   gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode() };
+  ensureGameConfigIsUnlocked();
+  syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
 });
 
 applyTranslations();
 updateInstallButtonVisibility();
-renderLeaderboard(gameConfig);
+
+if (activeUser) {
+  login(activeUser);
+} else {
+  setSessionVisibility(false);
+}
