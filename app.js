@@ -14,6 +14,9 @@ const resultScreen = document.getElementById('result-screen');
 const countdownEl = document.getElementById('countdown');
 const timeLeftEl = document.getElementById('time-left');
 const scoreEl = document.getElementById('score');
+const fuelStatusTextEl = document.getElementById('fuel-status-text');
+const fuelMeterFillEl = document.getElementById('fuel-meter-fill');
+const turboStatusEl = document.getElementById('turbo-status');
 const questionEl = document.getElementById('question');
 const answerInput = document.getElementById('answer');
 const submitAnswerBtn = document.getElementById('submit-answer');
@@ -240,6 +243,7 @@ function applyTranslations() {
   }
 
   renderLeaderboard(gameConfig);
+  updateFuelUi();
 }
 
 function updateInstallButtonVisibility() {
@@ -353,6 +357,27 @@ let secondsLeft = 60;
 let timerInterval = null;
 let currentQuestion = null;
 let lastQuestionKey = null;
+let fuel = 0;
+let turboRemaining = 0;
+let consecutiveCorrect = 0;
+
+const MAX_FUEL = 5;
+const TURBO_CORRECT_WINDOW = 3;
+const TURBO_BONUS = 1;
+
+
+function updateFuelUi() {
+  const ratio = (fuel / MAX_FUEL) * 100;
+  fuelStatusTextEl.textContent = t('label.fuelStatus', { current: fuel, max: MAX_FUEL });
+  fuelMeterFillEl.style.width = `${ratio}%`;
+
+  const turboActive = turboRemaining > 0;
+  turboStatusEl.textContent = turboActive
+    ? t('label.turboActive', { remaining: turboRemaining, bonus: TURBO_BONUS })
+    : t('label.turboInactive');
+  turboStatusEl.classList.toggle('is-active', turboActive);
+  fuelMeterFillEl.classList.toggle('is-turbo', turboActive);
+}
 
 function makeQuestion(config, allowRepeat = false) {
   const tables = tablePool(config);
@@ -413,13 +438,32 @@ function checkAnswer() {
   if (Number.isNaN(val)) return;
 
   if (val === currentQuestion.answer) {
-    score += 1;
+    consecutiveCorrect += 1;
+    let pointsAwarded = 1;
+
+    if (turboRemaining > 0) {
+      pointsAwarded += TURBO_BONUS;
+      turboRemaining -= 1;
+    }
+
+    score += pointsAwarded;
+    fuel = Math.min(MAX_FUEL, fuel + 1);
+
+    if (fuel === MAX_FUEL && turboRemaining === 0) {
+      turboRemaining = TURBO_CORRECT_WINDOW;
+      fuel = 0;
+    }
+
     scoreEl.textContent = String(score);
+    updateFuelUi();
     successSound();
     makeQuestion(gameConfig, false);
   } else {
+    consecutiveCorrect = 0;
+    fuel = Math.max(0, fuel - 1);
     score -= 1;
     scoreEl.textContent = String(score);
+    updateFuelUi();
     failSound();
     answerInput.value = '';
     answerInput.focus();
@@ -471,9 +515,13 @@ function finishGame() {
 function startGameRound() {
   score = 0;
   secondsLeft = 60;
+  fuel = 0;
+  turboRemaining = 0;
+  consecutiveCorrect = 0;
   scoreEl.textContent = '0';
   timeLeftEl.textContent = '60';
   lastQuestionKey = null;
+  updateFuelUi();
 
   showOnly(gameScreen);
   makeQuestion(gameConfig);
