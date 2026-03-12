@@ -64,6 +64,7 @@
           <div><span data-i18n="label.score">Score</span>: <strong id="score">0</strong></div>
         </div>
         <div id="question" class="question">2 × 3 = ?</div>
+        <div id="game-feedback" class="feedback hidden" aria-live="polite"></div>
         <input id="answer" type="number" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
         <button id="submit-answer" class="primary" data-i18n="button.submit">Submit</button>
         <p class="hint" data-i18n="hint.enter">Press Enter to answer quickly!</p>
@@ -73,7 +74,7 @@
         <h2 data-i18n="title.timesUp">Time's up!</h2>
         <p><span data-i18n="label.finalScore">Your final score:</span> <strong id="final-score"></strong></p>
         <div id="celebration" class="hidden celebration" data-i18n="label.topFive">⭐ NEW TOP 5! ⭐</div>
-        <p id="unlock-message" class="hidden unlock-message"></p>
+        <div id="result-feedback" class="feedback hidden" aria-live="polite"></div>
 
         <button id="play-again" data-i18n="button.playAgain">Play again</button>
       </section>

@@ -176,16 +176,70 @@ li {
   margin-top: 0;
 }
 
-.unlock-message {
+
+
+.feedback {
   margin-top: 10px;
   padding: 10px;
   border-radius: 10px;
-  background: #e7f7ec;
-  color: #1d7b46;
   font-weight: bold;
   text-align: center;
+  animation: feedbackFade 0.35s ease;
 }
 
+.feedback--success {
+  background: #e8f7ee;
+  color: #1d7b46;
+}
+
+.feedback--milestone {
+  background: #fff4cf;
+  color: #8a6100;
+  animation: feedbackPulse 0.75s ease-in-out 2;
+}
+
+.feedback--unlock {
+  background: #e8f0ff;
+  color: #1b4fb3;
+  border: 1px solid #b9d0ff;
+  animation: feedbackBounce 0.85s ease;
+}
+
+@keyframes feedbackFade {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes feedbackPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes feedbackBounce {
+  0% {
+    transform: translateY(-3px);
+  }
+  35% {
+    transform: translateY(0);
+  }
+  65% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
 
 .update-banner {
   border: 2px solid #bfd5f3;
