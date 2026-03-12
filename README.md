@@ -12,6 +12,36 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000` on your phone or desktop browser.
 
+## Host on GitHub Pages
+
+This repository now includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml` that auto-deploys the site to GitHub Pages when you push to `main` or `master`.
+
+### 1) Push this repo to GitHub
+
+```bash
+git remote add origin https://github.com/<your-username>/<your-repo>.git
+git push -u origin <your-default-branch>
+```
+
+### 2) Enable Pages in repository settings
+
+1. Open your GitHub repo.
+2. Go to **Settings → Pages**.
+3. Under **Build and deployment**, choose **Source: GitHub Actions**.
+
+### 3) Trigger deployment
+
+- Push to `main`/`master`, or
+- Open **Actions** tab and run **Deploy static site to GitHub Pages** manually.
+
+### 4) Open your hosted app
+
+Your app will be available at:
+
+`https://<your-username>.github.io/<your-repo>/`
+
+> Note: Leaderboards use browser `localStorage`, so scores are saved per device/browser profile.
+
 ## Gameplay
 
 - Choose a table from 2 to 12.
