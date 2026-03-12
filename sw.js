@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'times-table-sprint-v1';
+const CACHE_VERSION = 'times-table-sprint-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,16 +29,44 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+function shouldUseNetworkFirst(request) {
+  if (request.mode === 'navigate') return true;
+
+  const isSameOrigin = new URL(request.url).origin === self.location.origin;
+  if (!isSameOrigin) return false;
+
+  return ['document', 'script', 'style', 'manifest'].includes(request.destination);
+}
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
+  const request = event.request;
+
+  if (shouldUseNetworkFirst(request)) {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, responseClone));
+          if (response && response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, responseClone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('./index.html'))),
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const responseClone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, responseClone));
+          }
           return response;
         })
         .catch(() => caches.match('./index.html'));

@@ -63,6 +63,16 @@
           <div><span data-i18n="label.time">Time</span>: <strong id="time-left">60</strong>s</div>
           <div><span data-i18n="label.score">Score</span>: <strong id="score">0</strong></div>
         </div>
+        <div class="fuel-panel" role="status" aria-live="polite" aria-atomic="true">
+          <div class="fuel-panel__header">
+            <span data-i18n="label.fuel">Fuel</span>
+            <strong id="fuel-status-text">Fuel: 0/5</strong>
+          </div>
+          <div class="fuel-meter" aria-hidden="true">
+            <div id="fuel-meter-fill" class="fuel-meter__fill"></div>
+          </div>
+          <p id="turbo-status" class="turbo-status" data-i18n="label.turboInactive">Turbo inactive</p>
+        </div>
         <div id="question" class="question">2 × 3 = ?</div>
         <div id="game-feedback" class="feedback hidden" aria-live="polite"></div>
         <input id="answer" type="number" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
