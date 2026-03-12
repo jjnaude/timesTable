@@ -20,6 +20,8 @@ const turboStatusEl = document.getElementById('turbo-status');
 const questionEl = document.getElementById('question');
 const answerInput = document.getElementById('answer');
 const submitAnswerBtn = document.getElementById('submit-answer');
+const voiceRetryBtn = document.getElementById('voice-retry');
+const voiceStatusEl = document.getElementById('voice-status');
 const finalScoreEl = document.getElementById('final-score');
 const celebrationEl = document.getElementById('celebration');
 const gameFeedbackEl = document.getElementById('game-feedback');
@@ -303,6 +305,8 @@ function applyTranslations() {
 
   renderLeaderboard(gameConfig);
   updateFuelUi();
+
+  updateVoiceAvailabilityMessage();
 }
 
 function updateInstallButtonVisibility() {
@@ -418,6 +422,11 @@ let currentQuestion = null;
 let lastQuestionKey = null;
 let currentStreak = 0;
 
+let autoListenEnabled = true;
+let isVoiceBusy = false;
+let mediaRecorder = null;
+let activeMediaStream = null;
+let whisperTranscriberPromise = null;
 
 const STREAK_MILESTONES = [5, 10, 15, 20];
 const SCORE_MILESTONES = [10, 20, 30, 40, 50];
@@ -477,6 +486,7 @@ function makeQuestion(config, allowRepeat = false) {
   questionEl.textContent = `${question.table} × ${question.multiplier} = ?`;
   answerInput.value = '';
   answerInput.focus();
+  setTimeout(startAutoListening, 220);
 }
 
 function beep({ frequency, duration = 0.18, type = 'sine', volume = 0.06 }) {
@@ -507,6 +517,299 @@ function fanfareSound() {
   notes.forEach((freq, i) => {
     setTimeout(() => beep({ frequency: freq, duration: 0.18, type: 'sawtooth', volume: 0.08 }), i * 130);
   });
+}
+
+
+function setVoiceStatus(messageKey, params = {}) {
+  if (!voiceStatusEl) return;
+  voiceStatusEl.textContent = t(messageKey, params);
+}
+
+function isVoiceSupported() {
+  return Boolean(window.MediaRecorder && navigator.mediaDevices?.getUserMedia);
+}
+
+function updateVoiceAvailabilityMessage() {
+  if (!isVoiceSupported()) {
+    setVoiceStatus('hint.voiceUnsupported');
+    return;
+  }
+
+  if (isVoiceBusy) {
+    setVoiceStatus('hint.voiceListening');
+    return;
+  }
+
+  setVoiceStatus('hint.voiceIdle');
+}
+
+function normalizeSpokenText(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseEnglishNumberWords(textValue) {
+  const normalized = normalizeSpokenText(textValue);
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return null;
+
+  const units = {
+    zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9,
+  };
+  const teens = {
+    ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+    sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+  };
+  const tens = {
+    twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90,
+  };
+
+  let current = 0;
+
+  for (const token of tokens) {
+    if (token === 'and') continue;
+    if (token in units) {
+      current += units[token];
+      continue;
+    }
+    if (token in teens) {
+      current += teens[token];
+      continue;
+    }
+    if (token in tens) {
+      current += tens[token];
+      continue;
+    }
+    if (token === 'hundred') {
+      if (current === 0) current = 1;
+      current *= 100;
+      continue;
+    }
+    return null;
+  }
+
+  return current;
+}
+
+function afrikaansNumberToWords(number) {
+  const units = ['nul', 'een', 'twee', 'drie', 'vier', 'vyf', 'ses', 'sewe', 'agt', 'nege'];
+  const teens = ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vyftien', 'sestien', 'sewentien', 'agtien', 'negentien'];
+  const tensWords = {
+    20: 'twintig',
+    30: 'dertig',
+    40: 'veertig',
+    50: 'vyftig',
+    60: 'sestig',
+    70: 'sewentig',
+    80: 'tagtig',
+    90: 'negentig',
+  };
+
+  if (number < 10) return units[number];
+  if (number < 20) return teens[number - 10];
+  if (number < 100) {
+    const tens = Math.floor(number / 10) * 10;
+    const unit = number % 10;
+    if (unit === 0) return tensWords[tens];
+    return `${units[unit]} en ${tensWords[tens]}`;
+  }
+  if (number === 100) return 'honderd';
+  const remainder = number - 100;
+  if (remainder === 0) return 'honderd';
+  return `honderd ${afrikaansNumberToWords(remainder)}`;
+}
+
+const AFRIKAANS_NUMBER_LOOKUP = (() => {
+  const lookup = new Map();
+  for (let i = 0; i <= 144; i += 1) {
+    const canonical = normalizeSpokenText(afrikaansNumberToWords(i));
+    lookup.set(canonical, i);
+    lookup.set(canonical.replace(/ en /g, ' '), i);
+  }
+  return lookup;
+})();
+
+function parseAfrikaansNumberWords(textValue) {
+  const normalized = normalizeSpokenText(textValue);
+  if (!normalized) return null;
+  return AFRIKAANS_NUMBER_LOOKUP.get(normalized) ?? null;
+}
+
+function parseSpokenAnswer(transcript, language) {
+  const numericMatch = transcript.match(/\d+/);
+  if (numericMatch) return Number(numericMatch[0]);
+
+  if (language === 'af') {
+    return parseAfrikaansNumberWords(transcript);
+  }
+
+  return parseEnglishNumberWords(transcript);
+}
+
+function stopActiveRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  if (activeMediaStream) {
+    activeMediaStream.getTracks().forEach((track) => track.stop());
+    activeMediaStream = null;
+  }
+  mediaRecorder = null;
+}
+
+function downsampleTo16k(float32Array, sourceSampleRate) {
+  if (sourceSampleRate === 16000) return float32Array;
+  const ratio = sourceSampleRate / 16000;
+  const newLength = Math.round(float32Array.length / ratio);
+  const result = new Float32Array(newLength);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+
+  while (offsetResult < result.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+    let accum = 0;
+    let count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < float32Array.length; i += 1) {
+      accum += float32Array[i];
+      count += 1;
+    }
+    result[offsetResult] = count ? accum / count : 0;
+    offsetResult += 1;
+    offsetBuffer = nextOffsetBuffer;
+  }
+
+  return result;
+}
+
+async function decodeAudioBlobTo16kMono(audioBlob) {
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioContext = new AudioCtx();
+
+  try {
+    const decoded = await audioContext.decodeAudioData(arrayBuffer);
+    const { numberOfChannels, length, sampleRate } = decoded;
+    const mono = new Float32Array(length);
+
+    for (let channel = 0; channel < numberOfChannels; channel += 1) {
+      const data = decoded.getChannelData(channel);
+      for (let i = 0; i < length; i += 1) {
+        mono[i] += data[i] / numberOfChannels;
+      }
+    }
+
+    return downsampleTo16k(mono, sampleRate);
+  } finally {
+    audioContext.close();
+  }
+}
+
+async function recordAudioSnippet(durationMs = 1700) {
+  activeMediaStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      channelCount: 1,
+      noiseSuppression: true,
+      echoCancellation: true,
+      autoGainControl: true,
+    },
+  });
+
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    mediaRecorder = new MediaRecorder(activeMediaStream);
+
+    mediaRecorder.addEventListener('dataavailable', (event) => {
+      if (event.data && event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    });
+
+    mediaRecorder.addEventListener('stop', () => {
+      const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      stopActiveRecording();
+      resolve(blob);
+    }, { once: true });
+
+    mediaRecorder.addEventListener('error', () => {
+      stopActiveRecording();
+      reject(new Error('MediaRecorderError'));
+    }, { once: true });
+
+    mediaRecorder.start();
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    }, durationMs);
+  });
+}
+
+async function getWhisperTranscriber() {
+  if (!whisperTranscriberPromise) {
+    whisperTranscriberPromise = (async () => {
+      setVoiceStatus('hint.voiceLoading');
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      env.allowRemoteModels = true;
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+        quantized: true,
+      });
+    })();
+  }
+
+  return whisperTranscriberPromise;
+}
+
+async function startAutoListening() {
+  if (!autoListenEnabled || !isVoiceSupported()) {
+    updateVoiceAvailabilityMessage();
+    return;
+  }
+
+  if (isVoiceBusy || gameScreen.classList.contains('hidden') || !currentQuestion || secondsLeft <= 0) return;
+
+  isVoiceBusy = true;
+  setVoiceStatus('hint.voiceListening');
+
+  try {
+    const audioBlob = await recordAudioSnippet();
+    setVoiceStatus('hint.voiceTranscribing');
+    const audio16k = await decodeAudioBlobTo16kMono(audioBlob);
+    const transcriber = await getWhisperTranscriber();
+    const output = await transcriber(audio16k, {
+      task: 'transcribe',
+      language: currentLanguage === 'af' ? 'afrikaans' : 'english',
+      return_timestamps: false,
+    });
+
+    const transcript = (output?.text || '').trim();
+    const spokenValue = parseSpokenAnswer(transcript, currentLanguage);
+
+    if (spokenValue === null || spokenValue < 0 || spokenValue > 144) {
+      setVoiceStatus('hint.voiceUnclear', { text: transcript || '...' });
+      return;
+    }
+
+    answerInput.value = String(spokenValue);
+    checkAnswer();
+  } catch (error) {
+    if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+      setVoiceStatus('hint.voicePermissionDenied');
+    } else {
+      setVoiceStatus('hint.voiceError');
+      console.error('Voice recognition error', error);
+    }
+  } finally {
+    isVoiceBusy = false;
+    if (!gameScreen.classList.contains('hidden') && secondsLeft > 0) {
+      setVoiceStatus('hint.voiceIdle');
+    }
+  }
 }
 
 function checkAnswer() {
@@ -565,6 +868,7 @@ function checkAnswer() {
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
     answerInput.value = '';
     answerInput.focus();
+    setTimeout(startAutoListening, 220);
   }
 }
 
@@ -583,6 +887,8 @@ function maybeAutoCheckAnswer() {
 }
 
 function finishGame() {
+  autoListenEnabled = false;
+  stopActiveRecording();
   clearInterval(timerInterval);
   vehicleSprite.classList.remove('is-driving');
   timerInterval = null;
@@ -617,6 +923,7 @@ function finishGame() {
 }
 
 function startGameRound() {
+  autoListenEnabled = true;
   score = 0;
   secondsLeft = 60;
   fuel = 0;
@@ -700,10 +1007,12 @@ answerInput.addEventListener('input', maybeAutoCheckAnswer);
 languageSelect.addEventListener('change', () => {
   currentLanguage = languageSelect.value;
   localStorage.setItem(STORAGE_KEYS.language, currentLanguage);
+  stopActiveRecording();
   applyTranslations();
 });
 
 submitAnswerBtn.addEventListener('click', checkAnswer);
+voiceRetryBtn.addEventListener('click', startAutoListening);
 answerInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();

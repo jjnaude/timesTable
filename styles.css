@@ -244,6 +244,14 @@ button.secondary:active {
   color: #4e5f76;
 }
 
+#voice-retry {
+  margin-top: 10px;
+}
+
+#voice-status {
+  min-height: 1.3em;
+}
+
 .celebration {
   background: var(--accent);
   padding: 10px;

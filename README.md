@@ -64,3 +64,14 @@ Your app will be available at:
   - Correct: score +1, positive sound, next question.
   - Wrong: score -1, negative sound, same question repeats.
 - Top 5 scores are stored separately for each mode + table setting.
+
+## Voice answers (offline + Afrikaans)
+
+Voice input is now implemented with an in-browser Whisper pipeline (`Xenova/whisper-tiny`) and supports both English and Afrikaans.
+
+- The app auto-listens after each new question.
+- It records a short microphone clip, transcribes it locally in the browser, and maps the transcript to a number answer.
+- The first voice use downloads model files; after that, assets are cached by the PWA/service-worker path for offline reuse.
+- If recognition is unclear, the app shows what it heard so the learner can tap **Speak answer** and retry.
+
+> Note: first-time model download can be large and slower on low-end devices; subsequent runs are much faster once cached.
