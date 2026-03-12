@@ -52,6 +52,21 @@ body {
   padding: 16px;
 }
 
+.vehicle-stage__open {
+  display: grid;
+  place-items: center;
+  width: auto;
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+}
+
+.vehicle-stage__open:focus-visible {
+  outline: 3px solid #9cc0f3;
+  border-radius: 10px;
+}
+
 .vehicle-stage__sprite {
   --vehicle-color: #2c7be5;
   width: clamp(88px, 22vw, 118px);
@@ -60,26 +75,92 @@ body {
   -webkit-mask-position: center;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: contain;
+  -webkit-mask-image: var(--vehicle-mask-image, url('./assets/vehicles/pickup.svg'));
   mask-position: center;
   mask-repeat: no-repeat;
   mask-size: contain;
+  mask-image: var(--vehicle-mask-image, url('./assets/vehicles/pickup.svg'));
   filter: drop-shadow(0 8px 10px rgba(17, 50, 86, 0.28));
   animation: vehicleIdle 1.6s ease-in-out infinite;
   z-index: 1;
 }
 
-.vehicle-stage__sprite.is-pickup {
-  -webkit-mask-image: url('./assets/vehicles/pickup.svg');
-  mask-image: url('./assets/vehicles/pickup.svg');
-}
-
-.vehicle-stage__sprite.is-buggy {
-  -webkit-mask-image: url('./assets/vehicles/buggy.svg');
-  mask-image: url('./assets/vehicles/buggy.svg');
-}
-
 .vehicle-stage__sprite.is-driving {
   animation: vehicleDrive 360ms linear infinite;
+}
+
+.garage-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.garage-panel__header h2 {
+  margin: 0;
+}
+
+.garage-panel__close {
+  width: auto;
+  margin: 0;
+  padding: 8px 12px;
+}
+
+.garage-panel__hint {
+  margin: 10px 0;
+  color: #4e5f76;
+}
+
+.garage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  gap: 10px;
+}
+
+.garage-grid__item {
+  width: 100%;
+  margin: 0;
+  padding: 8px;
+  background: #f6faff;
+  border: 1px solid #c7d9ef;
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.garage-grid__item[aria-selected='true'] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(44, 123, 229, 0.2);
+}
+
+.garage-grid__icon {
+  width: 42px;
+  aspect-ratio: 1;
+  background-color: var(--vehicle-color, #2c7be5);
+  -webkit-mask-image: var(--vehicle-icon-mask);
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: var(--vehicle-icon-mask);
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.garage-grid__name {
+  font-size: 0.78rem;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.garage-grid__item.is-locked {
+  opacity: 0.65;
+}
+
+.garage-grid__lock {
+  font-size: 0.75rem;
+  color: #445a73;
 }
 
 @keyframes vehicleIdle {
@@ -100,15 +181,6 @@ body {
   50% {
     transform: translateY(1px);
   }
-}
-
-.vehicle-customization {
-  margin-top: 12px;
-}
-
-.vehicle-customization label {
-  display: block;
-  margin-top: 8px;
 }
 
 #vehicle-color {

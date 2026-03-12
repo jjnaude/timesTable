@@ -21,8 +21,21 @@
 
       <section id="vehicle-stage" class="vehicle-stage hidden" aria-live="polite" aria-label="Vehicle stage">
         <div id="vehicle-environment" class="vehicle-stage__environment">
-          <div id="vehicle-sprite" class="vehicle-stage__sprite" role="img" aria-label="Player vehicle"></div>
+          <button id="open-garage-btn" class="vehicle-stage__open" type="button" aria-label="Open garage">
+            <div id="vehicle-sprite" class="vehicle-stage__sprite" role="img" aria-label="Player vehicle"></div>
+          </button>
         </div>
+      </section>
+
+      <section id="garage-panel" class="card hidden" aria-live="polite">
+        <div class="garage-panel__header">
+          <h2 data-i18n="title.garage">Garage</h2>
+          <button id="close-garage-btn" class="secondary garage-panel__close" type="button" data-i18n="button.closeGarage">Close garage</button>
+        </div>
+        <p class="garage-panel__hint" data-i18n="hint.garageUnlock">Choose from your unlocked vehicles</p>
+        <div id="garage-grid" class="garage-grid" role="listbox" aria-label="Vehicle style"></div>
+        <label for="vehicle-color" data-i18n="label.vehicleColor">Vehicle colour</label>
+        <input id="vehicle-color" type="color" value="#2c7be5" aria-label="Vehicle colour" />
       </section>
 
       <section id="update-banner" class="card update-banner hidden" aria-live="polite">
@@ -54,17 +67,6 @@
           <legend data-i18n="legend.mode">Mode</legend>
           <label><input type="radio" name="mode" value="single" checked /> <span data-i18n="mode.single">Single table only</span></label>
           <label><input type="radio" name="mode" value="mixed" /> <span data-i18n="mode.mixed">Mixed tables (2 to selected)</span></label>
-        </fieldset>
-
-        <fieldset class="vehicle-customization">
-          <legend data-i18n="legend.vehicle">Vehicle</legend>
-          <label for="vehicle-variant" data-i18n="label.vehicleVariant">Vehicle style</label>
-          <select id="vehicle-variant" aria-label="Vehicle style">
-            <option value="pickup" data-i18n="vehicle.pickup">Pickup truck</option>
-            <option value="buggy" data-i18n="vehicle.buggy">Desert buggy</option>
-          </select>
-          <label for="vehicle-color" data-i18n="label.vehicleColor">Vehicle colour</label>
-          <input id="vehicle-color" type="color" value="#2c7be5" aria-label="Vehicle colour" />
         </fieldset>
 
         <button id="start-btn" class="primary" data-i18n="button.start">Start 1-minute sprint</button>
