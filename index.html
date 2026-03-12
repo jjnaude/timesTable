@@ -19,6 +19,14 @@
       <h1 data-i18n="title.app">Times Table Sprint</h1>
       <button id="install-btn" class="secondary hidden" type="button">Install app</button>
 
+      <section id="update-banner" class="card update-banner hidden" aria-live="polite">
+        <p class="update-banner__text" data-i18n="pwa.updateReady">A new version is ready.</p>
+        <div class="update-banner__actions">
+          <button id="update-btn" class="primary" type="button" data-i18n="button.updateNow">Update now</button>
+          <button id="dismiss-update-btn" class="secondary" type="button" data-i18n="button.later">Later</button>
+        </div>
+      </section>
+
       <section id="login-screen" class="card">
         <h2 data-i18n="title.login">Welcome</h2>
         <label for="login-name" data-i18n="label.loginName">Enter your name to continue</label>
