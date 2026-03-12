@@ -18,6 +18,45 @@ const playAgainBtn = document.getElementById('play-again');
 const leaderboardTitle = document.getElementById('leaderboard-title');
 const leaderboardList = document.getElementById('leaderboard-list');
 
+
+const installBtn = document.getElementById('install-btn');
+let deferredInstallPrompt = null;
+
+function updateInstallButtonVisibility() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (deferredInstallPrompt && !isStandalone) {
+    installBtn.classList.remove('hidden');
+  } else {
+    installBtn.classList.add('hidden');
+  }
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js');
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  updateInstallButtonVisibility();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  updateInstallButtonVisibility();
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  updateInstallButtonVisibility();
+});
+
+
 for (let i = 2; i <= 12; i += 1) {
   const option = document.createElement('option');
   option.value = String(i);
@@ -280,4 +319,5 @@ maxTableSelect.addEventListener('change', () => {
   renderLeaderboard(gameConfig);
 });
 
+updateInstallButtonVisibility();
 renderLeaderboard(gameConfig);
