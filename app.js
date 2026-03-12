@@ -2,6 +2,9 @@ const maxTableSelect = document.getElementById('max-table');
 const languageSelect = document.getElementById('language-select');
 const startBtn = document.getElementById('start-btn');
 const installBtn = document.getElementById('install-btn');
+const updateBanner = document.getElementById('update-banner');
+const updateBtn = document.getElementById('update-btn');
+const dismissUpdateBtn = document.getElementById('dismiss-update-btn');
 const loginScreen = document.getElementById('login-screen');
 const sessionScreen = document.getElementById('session-screen');
 const setupScreen = document.getElementById('setup-screen');
@@ -54,6 +57,8 @@ Object.entries(TRANSLATIONS).forEach(([code, dict]) => {
 languageSelect.value = currentLanguage;
 
 let deferredInstallPrompt = null;
+let swRegistration = null;
+let shouldReloadForUpdate = false;
 let activeUser = localStorage.getItem(STORAGE_KEYS.activeUser) || null;
 
 function normalizeName(name) {
@@ -246,9 +251,63 @@ function updateInstallButtonVisibility() {
   }
 }
 
+function showUpdateBanner() {
+  updateBanner.classList.remove('hidden');
+}
+
+function hideUpdateBanner() {
+  updateBanner.classList.add('hidden');
+}
+
+function promptForAvailableUpdate(registration) {
+  if (registration.waiting) {
+    showUpdateBanner();
+  }
+}
+
+function monitorInstallingWorker(worker) {
+  if (!worker) return;
+  worker.addEventListener('statechange', () => {
+    if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+      showUpdateBanner();
+    }
+  });
+}
+
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js');
+  window.addEventListener('load', async () => {
+    try {
+      swRegistration = await navigator.serviceWorker.register('./sw.js');
+      promptForAvailableUpdate(swRegistration);
+
+      swRegistration.addEventListener('updatefound', () => {
+        monitorInstallingWorker(swRegistration.installing);
+      });
+
+      if (navigator.onLine) {
+        swRegistration.update();
+      }
+
+      setInterval(() => {
+        if (navigator.onLine && swRegistration) {
+          swRegistration.update();
+        }
+      }, 10 * 60 * 1000);
+    } catch (error) {
+      console.error('Service worker registration failed', error);
+    }
+  });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!shouldReloadForUpdate) return;
+    shouldReloadForUpdate = false;
+    window.location.reload();
+  });
+
+  window.addEventListener('online', () => {
+    if (swRegistration) {
+      swRegistration.update();
+    }
   });
 }
 
@@ -270,6 +329,16 @@ installBtn.addEventListener('click', async () => {
   deferredInstallPrompt = null;
   updateInstallButtonVisibility();
 });
+
+updateBtn.addEventListener('click', () => {
+  const waitingWorker = swRegistration?.waiting;
+  if (!waitingWorker) return;
+
+  shouldReloadForUpdate = true;
+  waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+});
+
+dismissUpdateBtn.addEventListener('click', hideUpdateBanner);
 
 for (let i = 2; i <= 12; i += 1) {
   const option = document.createElement('option');
