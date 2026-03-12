@@ -12,6 +12,17 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000` on your phone or desktop browser.
 
+
+## Install as an Android app (PWA)
+
+This project is now configured as a Progressive Web App:
+
+- Installable on Android (Chrome menu → **Install app**)
+- Works offline after the first successful load
+- Includes app icons and standalone app display mode
+
+If you deploy on HTTPS (for example GitHub Pages), Android users can install it to their home screen and run it like a native app.
+
 ## Host on GitHub Pages
 
 This repository now includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml` that auto-deploys the site to GitHub Pages when you push to `main` or `master`.
@@ -45,6 +56,8 @@ Your app will be available at:
 ## Gameplay
 
 - Choose a table from 2 to 12.
+- Switch between **English** and **Afrikaans** using the language picker.
+- Edit all language strings in `translations.js` (`en` and `af` locales).
 - Choose **Single** mode (just that table) or **Mixed** mode (2 up to your selected table).
 - Hit start and wait for the dramatic 3-2-1 countdown.
 - Answer as many questions as possible in 60 seconds.
