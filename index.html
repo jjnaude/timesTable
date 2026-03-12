@@ -56,6 +56,17 @@
           <label><input type="radio" name="mode" value="mixed" /> <span data-i18n="mode.mixed">Mixed tables (2 to selected)</span></label>
         </fieldset>
 
+        <fieldset class="vehicle-customization">
+          <legend data-i18n="legend.vehicle">Vehicle</legend>
+          <label for="vehicle-variant" data-i18n="label.vehicleVariant">Vehicle style</label>
+          <select id="vehicle-variant" aria-label="Vehicle style">
+            <option value="pickup" data-i18n="vehicle.pickup">Pickup truck</option>
+            <option value="buggy" data-i18n="vehicle.buggy">Desert buggy</option>
+          </select>
+          <label for="vehicle-color" data-i18n="label.vehicleColor">Vehicle colour</label>
+          <input id="vehicle-color" type="color" value="#2c7be5" aria-label="Vehicle colour" />
+        </fieldset>
+
         <button id="start-btn" class="primary" data-i18n="button.start">Start 1-minute sprint</button>
       </section>
 

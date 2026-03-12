@@ -32,10 +32,14 @@ const loginBtn = document.getElementById('login-btn');
 const activePlayerNameEl = document.getElementById('active-player-name');
 const logoutBtn = document.getElementById('logout-btn');
 const vehicleStage = document.getElementById('vehicle-stage');
+const vehicleSprite = document.getElementById('vehicle-sprite');
+const vehicleVariantSelect = document.getElementById('vehicle-variant');
+const vehicleColorInput = document.getElementById('vehicle-color');
 
 const STORAGE_KEYS = {
   language: 'language',
   activeUser: 'activeUser',
+  vehiclePrefsPrefix: 'vehiclePrefs:',
 };
 
 const LEVEL_SEQUENCE = [{ mode: 'single', maxTable: 2 }];
@@ -76,6 +80,56 @@ function progressKey(name) {
 
 function configKey(config) {
   return `${config.mode}-${config.maxTable}`;
+}
+
+
+const DEFAULT_VEHICLE_PREFS = {
+  variant: 'pickup',
+  color: '#2c7be5',
+};
+
+const VEHICLE_VARIANTS = new Set(['pickup', 'buggy']);
+
+function vehiclePrefsKey(name) {
+  return `${STORAGE_KEYS.vehiclePrefsPrefix}${normalizeName(name)}`;
+}
+
+function sanitizeVehiclePrefs(rawPrefs = {}) {
+  const variant = VEHICLE_VARIANTS.has(rawPrefs.variant) ? rawPrefs.variant : DEFAULT_VEHICLE_PREFS.variant;
+  const color = /^#[0-9a-f]{6}$/i.test(rawPrefs.color || '') ? rawPrefs.color : DEFAULT_VEHICLE_PREFS.color;
+  return { variant, color };
+}
+
+function getVehiclePrefs(name) {
+  const normalized = normalizeName(name);
+  if (!normalized) return { ...DEFAULT_VEHICLE_PREFS };
+  const raw = localStorage.getItem(vehiclePrefsKey(normalized));
+  if (!raw) return { ...DEFAULT_VEHICLE_PREFS };
+  try {
+    return sanitizeVehiclePrefs(JSON.parse(raw));
+  } catch {
+    return { ...DEFAULT_VEHICLE_PREFS };
+  }
+}
+
+function saveVehiclePrefs(name, prefs) {
+  const normalized = normalizeName(name);
+  if (!normalized) return;
+  localStorage.setItem(vehiclePrefsKey(normalized), JSON.stringify(sanitizeVehiclePrefs(prefs)));
+}
+
+function applyVehiclePrefs(prefs) {
+  const safePrefs = sanitizeVehiclePrefs(prefs);
+  vehicleSprite.classList.remove('is-pickup', 'is-buggy');
+  vehicleSprite.classList.add(`is-${safePrefs.variant}`);
+  vehicleSprite.style.setProperty('--vehicle-color', safePrefs.color);
+
+  if (vehicleVariantSelect.value !== safePrefs.variant) {
+    vehicleVariantSelect.value = safePrefs.variant;
+  }
+  if (vehicleColorInput.value.toLowerCase() !== safePrefs.color.toLowerCase()) {
+    vehicleColorInput.value = safePrefs.color;
+  }
 }
 
 
@@ -240,6 +294,8 @@ function applyTranslations() {
   answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
   languageSelect.setAttribute('aria-label', t('aria.language'));
   loginNameInput.setAttribute('aria-label', t('aria.loginName'));
+  vehicleVariantSelect.setAttribute('aria-label', t('aria.vehicleVariant'));
+  vehicleColorInput.setAttribute('aria-label', t('aria.vehicleColor'));
 
   if (countdownEl.textContent === TRANSLATIONS.en['countdown.go'] || countdownEl.textContent === TRANSLATIONS.af['countdown.go']) {
     countdownEl.textContent = t('countdown.go');
@@ -528,6 +584,7 @@ function maybeAutoCheckAnswer() {
 
 function finishGame() {
   clearInterval(timerInterval);
+  vehicleSprite.classList.remove('is-driving');
   timerInterval = null;
   showOnly(resultScreen);
   finalScoreEl.textContent = String(score);
@@ -573,6 +630,7 @@ function startGameRound() {
   updateFuelUi();
 
   showOnly(gameScreen);
+  vehicleSprite.classList.add('is-driving');
   makeQuestion(gameConfig);
 
   timerInterval = setInterval(() => {
@@ -614,11 +672,13 @@ function login(name) {
   syncSelectorsFromGameConfig();
   applyLevelLocks();
   renderLeaderboard(gameConfig);
+  applyVehiclePrefs(getVehiclePrefs(activeUser));
   setSessionVisibility(true);
 }
 
 function logout() {
   activeUser = null;
+  vehicleSprite.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
   setSessionVisibility(false);
   loginNameInput.value = '';
@@ -692,6 +752,31 @@ maxTableSelect.addEventListener('change', () => {
   syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
 });
+
+
+vehicleVariantSelect.addEventListener('change', () => {
+  const prefs = sanitizeVehiclePrefs({
+    variant: vehicleVariantSelect.value,
+    color: vehicleColorInput.value,
+  });
+  applyVehiclePrefs(prefs);
+  if (activeUser) {
+    saveVehiclePrefs(activeUser, prefs);
+  }
+});
+
+vehicleColorInput.addEventListener('input', () => {
+  const prefs = sanitizeVehiclePrefs({
+    variant: vehicleVariantSelect.value,
+    color: vehicleColorInput.value,
+  });
+  applyVehiclePrefs(prefs);
+  if (activeUser) {
+    saveVehiclePrefs(activeUser, prefs);
+  }
+});
+
+applyVehiclePrefs(DEFAULT_VEHICLE_PREFS);
 
 applyTranslations();
 updateInstallButtonVisibility();
