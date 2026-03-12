@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Times Table Sprint</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1>Times Table Sprint</h1>
+
+      <section id="setup-screen" class="card">
+        <h2>Choose your challenge</h2>
+        <label for="max-table">Highest times table (2-12)</label>
+        <select id="max-table" aria-label="Highest times table"></select>
+
+        <fieldset>
+          <legend>Mode</legend>
+          <label><input type="radio" name="mode" value="single" checked /> Single table only</label>
+          <label><input type="radio" name="mode" value="mixed" /> Mixed tables (2 to selected)</label>
+        </fieldset>
+
+        <button id="start-btn" class="primary">Start 1-minute sprint</button>
+      </section>
+
+      <section id="countdown-screen" class="card hidden" aria-live="polite">
+        <h2>Get ready!</h2>
+        <div id="countdown" class="countdown">3</div>
+      </section>
+
+      <section id="game-screen" class="card hidden" aria-live="polite">
+        <div class="stats">
+          <div>Time: <strong id="time-left">60</strong>s</div>
+          <div>Score: <strong id="score">0</strong></div>
+        </div>
+        <div id="question" class="question">2 × 3 = ?</div>
+        <input id="answer" type="number" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
+        <button id="submit-answer" class="primary">Submit</button>
+        <p class="hint">Press Enter to answer quickly!</p>
+      </section>
+
+      <section id="result-screen" class="card hidden">
+        <h2>Time's up!</h2>
+        <p>Your final score: <strong id="final-score"></strong></p>
+        <div id="celebration" class="hidden celebration">⭐ NEW TOP 5! ⭐</div>
+
+        <form id="name-form" class="hidden">
+          <label for="player-name">You made the leaderboard! Enter your name:</label>
+          <input id="player-name" maxlength="20" required />
+          <button type="submit" class="primary">Save score</button>
+        </form>
+
+        <button id="play-again">Play again</button>
+      </section>
+
+      <section id="leaderboard-screen" class="card">
+        <h2>Leaderboard</h2>
+        <p id="leaderboard-title">Single 2-times table</p>
+        <ol id="leaderboard-list"></ol>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
