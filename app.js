@@ -1,4 +1,5 @@
 const maxTableSelect = document.getElementById('max-table');
+const languageSelect = document.getElementById('language-select');
 const startBtn = document.getElementById('start-btn');
 const setupScreen = document.getElementById('setup-screen');
 const countdownScreen = document.getElementById('countdown-screen');
@@ -18,6 +19,22 @@ const playAgainBtn = document.getElementById('play-again');
 const leaderboardTitle = document.getElementById('leaderboard-title');
 const leaderboardList = document.getElementById('leaderboard-list');
 
+let currentLanguage = localStorage.getItem('language') || 'en';
+if (!TRANSLATIONS[currentLanguage]) currentLanguage = 'en';
+
+function t(key, params = {}) {
+  const fallback = TRANSLATIONS.en[key] || key;
+  const template = TRANSLATIONS[currentLanguage][key] || fallback;
+  return template.replace(/\{(\w+)\}/g, (_, token) => String(params[token] ?? `{${token}}`));
+}
+
+Object.entries(TRANSLATIONS).forEach(([code, dict]) => {
+  const option = document.createElement('option');
+  option.value = code;
+  option.textContent = dict.languageName;
+  languageSelect.appendChild(option);
+});
+languageSelect.value = currentLanguage;
 
 const installBtn = document.getElementById('install-btn');
 let deferredInstallPrompt = null;
@@ -73,6 +90,23 @@ let currentQuestion = null;
 let lastQuestionKey = null;
 let pendingHighScore = null;
 
+function applyTranslations() {
+  document.documentElement.lang = currentLanguage;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+
+  maxTableSelect.setAttribute('aria-label', t('aria.highestTimesTable'));
+  answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
+  languageSelect.setAttribute('aria-label', t('aria.language'));
+
+  if (countdownEl.textContent === TRANSLATIONS.en['countdown.go'] || countdownEl.textContent === TRANSLATIONS.af['countdown.go']) {
+    countdownEl.textContent = t('countdown.go');
+  }
+
+  renderLeaderboard(gameConfig);
+}
+
 function showOnly(screen) {
   [setupScreen, countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
   screen.classList.remove('hidden');
@@ -87,7 +121,9 @@ function settingKey(config) {
 }
 
 function settingLabel(config) {
-  return `${config.mode === 'single' ? 'Single' : 'Mixed'} ${config.maxTable}-times table`;
+  return config.mode === 'single'
+    ? t('leaderboard.single', { max: config.maxTable })
+    : t('leaderboard.mixed', { max: config.maxTable });
 }
 
 function getLeaderboard(config) {
@@ -111,7 +147,7 @@ function renderLeaderboard(config) {
   leaderboardList.innerHTML = '';
   if (!rows.length) {
     const li = document.createElement('li');
-    li.textContent = 'No scores yet. Be the first!';
+    li.textContent = t('leaderboard.empty');
     leaderboardList.appendChild(li);
     return;
   }
@@ -125,12 +161,12 @@ function renderLeaderboard(config) {
 
 function tablePool(config) {
   const start = 2;
-  const end = config.mode === 'single' ? config.maxTable : config.maxTable;
+  const end = config.maxTable;
   const values = [];
   if (config.mode === 'single') {
     return [config.maxTable];
   }
-  for (let t = start; t <= end; t += 1) values.push(t);
+  for (let tVal = start; tVal <= end; tVal += 1) values.push(tVal);
   return values;
 }
 
@@ -140,7 +176,7 @@ function makeQuestion(config, allowRepeat = false) {
   let guard = 0;
   do {
     const table = tables[Math.floor(Math.random() * tables.length)];
-    const multiplier = 2 + Math.floor(Math.random() * 11); // 2..12
+    const multiplier = 2 + Math.floor(Math.random() * 11);
     question = {
       table,
       multiplier,
@@ -201,7 +237,6 @@ function checkAnswer() {
     score -= 1;
     scoreEl.textContent = String(score);
     failSound();
-    // Same question remains by design.
     answerInput.value = '';
     answerInput.focus();
   }
@@ -261,7 +296,7 @@ function startCountdownThenGame() {
       countdownEl.textContent = String(count);
       beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
     } else {
-      countdownEl.textContent = 'GO!';
+      countdownEl.textContent = t('countdown.go');
       beep({ frequency: 980, duration: 0.18, type: 'triangle', volume: 0.08 });
       clearInterval(interval);
       setTimeout(startGameRound, 600);
@@ -278,6 +313,12 @@ startBtn.addEventListener('click', () => {
   startCountdownThenGame();
 });
 
+languageSelect.addEventListener('change', () => {
+  currentLanguage = languageSelect.value;
+  localStorage.setItem('language', currentLanguage);
+  applyTranslations();
+});
+
 submitAnswerBtn.addEventListener('click', checkAnswer);
 answerInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
@@ -289,7 +330,7 @@ answerInput.addEventListener('keydown', (event) => {
 nameForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (!pendingHighScore) return;
-  const name = playerNameInput.value.trim() || 'Player';
+  const name = playerNameInput.value.trim() || t('default.player');
   const entries = getLeaderboard(pendingHighScore.config);
   entries.push({ name, score: pendingHighScore.score });
   entries.sort((a, b) => b.score - a.score);
@@ -314,10 +355,12 @@ document.querySelectorAll('input[name="mode"]').forEach((el) => {
     renderLeaderboard(gameConfig);
   });
 });
+
 maxTableSelect.addEventListener('change', () => {
   gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode() };
   renderLeaderboard(gameConfig);
 });
 
+applyTranslations();
 updateInstallButtonVisibility();
 renderLeaderboard(gameConfig);

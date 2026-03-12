@@ -56,6 +56,8 @@ Your app will be available at:
 ## Gameplay
 
 - Choose a table from 2 to 12.
+- Switch between **English** and **Afrikaans** using the language picker.
+- Edit all language strings in `translations.js` (`en` and `af` locales).
 - Choose **Single** mode (just that table) or **Mixed** mode (2 up to your selected table).
 - Hit start and wait for the dramatic 3-2-1 countdown.
 - Answer as many questions as possible in 60 seconds.
