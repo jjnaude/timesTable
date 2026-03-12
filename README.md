@@ -65,13 +65,13 @@ Your app will be available at:
   - Wrong: score -1, negative sound, same question repeats.
 - Top 5 scores are stored separately for each mode + table setting.
 
-## Voice answer feasibility (browser)
+## Voice answers (offline + Afrikaans)
 
-Running basic speech recognition in-browser is viable for this app, with caveats:
+Voice input is now implemented with an in-browser Whisper pipeline (`Xenova/whisper-tiny`) and supports both English and Afrikaans.
 
-- **Fastest path:** use the Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`) to capture short spoken number answers.
-- **Best UX for kids:** a push-to-talk button per question (or auto-listen after each prompt), with confidence thresholding and a fallback text input.
-- **Main constraints:** browser support differences (best on Chromium), microphone permission prompts, background noise, and accent/language variability.
-- **Offline expectation:** Web Speech implementations are often cloud-backed; true offline recognition usually needs a heavier WASM model (e.g., Vosk/Whisper.cpp) and careful performance tuning.
+- The app auto-listens after each new question.
+- It records a short microphone clip, transcribes it locally in the browser, and maps the transcript to a number answer.
+- The first voice use downloads model files; after that, assets are cached by the PWA/service-worker path for offline reuse.
+- If recognition is unclear, the app shows what it heard so the learner can tap **Speak answer** and retry.
 
-For this specific 2–12 multiplication game, speech is easier than open dictation because accepted outputs are a small closed set of numbers (0–144), so misrecognitions can be corrected using lightweight validation and nearest-match logic.
+> Note: first-time model download can be large and slower on low-end devices; subsequent runs are much faster once cached.

@@ -248,15 +248,7 @@ function applyTranslations() {
   renderLeaderboard(gameConfig);
   updateFuelUi();
 
-  if (!SpeechRecognitionCtor) {
-    setVoiceStatus('hint.voiceUnsupported');
-  } else if (currentLanguage !== 'en') {
-    setVoiceStatus('hint.voiceLanguageRestricted');
-  } else if (speechPermissionDenied) {
-    setVoiceStatus('hint.voicePermissionDenied');
-  } else {
-    setVoiceStatus('hint.voiceIdle');
-  }
+  updateVoiceAvailabilityMessage();
 }
 
 function updateInstallButtonVisibility() {
@@ -372,11 +364,11 @@ let currentQuestion = null;
 let lastQuestionKey = null;
 let currentStreak = 0;
 
-const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-let speechRecognition = null;
-let isSpeechActive = false;
 let autoListenEnabled = true;
-let speechPermissionDenied = false;
+let isVoiceBusy = false;
+let mediaRecorder = null;
+let activeMediaStream = null;
+let whisperTranscriberPromise = null;
 
 const STREAK_MILESTONES = [5, 10, 15, 20];
 const SCORE_MILESTONES = [10, 20, 30, 40, 50];
@@ -475,12 +467,35 @@ function setVoiceStatus(messageKey, params = {}) {
   voiceStatusEl.textContent = t(messageKey, params);
 }
 
-function isSpeechUsable() {
-  return Boolean(SpeechRecognitionCtor) && currentLanguage === 'en' && !speechPermissionDenied;
+function isVoiceSupported() {
+  return Boolean(window.MediaRecorder && navigator.mediaDevices?.getUserMedia);
+}
+
+function updateVoiceAvailabilityMessage() {
+  if (!isVoiceSupported()) {
+    setVoiceStatus('hint.voiceUnsupported');
+    return;
+  }
+
+  if (isVoiceBusy) {
+    setVoiceStatus('hint.voiceListening');
+    return;
+  }
+
+  setVoiceStatus('hint.voiceIdle');
+}
+
+function normalizeSpokenText(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function parseEnglishNumberWords(textValue) {
-  const normalized = textValue.toLowerCase().replace(/[^a-z\s-]/g, ' ').replace(/-/g, ' ');
+  const normalized = normalizeSpokenText(textValue);
   const tokens = normalized.split(/\s+/).filter(Boolean);
   if (!tokens.length) return null;
 
@@ -522,68 +537,200 @@ function parseEnglishNumberWords(textValue) {
   return current;
 }
 
-function parseSpokenAnswer(transcript) {
+function afrikaansNumberToWords(number) {
+  const units = ['nul', 'een', 'twee', 'drie', 'vier', 'vyf', 'ses', 'sewe', 'agt', 'nege'];
+  const teens = ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vyftien', 'sestien', 'sewentien', 'agtien', 'negentien'];
+  const tensWords = {
+    20: 'twintig',
+    30: 'dertig',
+    40: 'veertig',
+    50: 'vyftig',
+    60: 'sestig',
+    70: 'sewentig',
+    80: 'tagtig',
+    90: 'negentig',
+  };
+
+  if (number < 10) return units[number];
+  if (number < 20) return teens[number - 10];
+  if (number < 100) {
+    const tens = Math.floor(number / 10) * 10;
+    const unit = number % 10;
+    if (unit === 0) return tensWords[tens];
+    return `${units[unit]} en ${tensWords[tens]}`;
+  }
+  if (number === 100) return 'honderd';
+  const remainder = number - 100;
+  if (remainder === 0) return 'honderd';
+  return `honderd ${afrikaansNumberToWords(remainder)}`;
+}
+
+const AFRIKAANS_NUMBER_LOOKUP = (() => {
+  const lookup = new Map();
+  for (let i = 0; i <= 144; i += 1) {
+    const canonical = normalizeSpokenText(afrikaansNumberToWords(i));
+    lookup.set(canonical, i);
+    lookup.set(canonical.replace(/ en /g, ' '), i);
+  }
+  return lookup;
+})();
+
+function parseAfrikaansNumberWords(textValue) {
+  const normalized = normalizeSpokenText(textValue);
+  if (!normalized) return null;
+  return AFRIKAANS_NUMBER_LOOKUP.get(normalized) ?? null;
+}
+
+function parseSpokenAnswer(transcript, language) {
   const numericMatch = transcript.match(/\d+/);
   if (numericMatch) return Number(numericMatch[0]);
+
+  if (language === 'af') {
+    return parseAfrikaansNumberWords(transcript);
+  }
+
   return parseEnglishNumberWords(transcript);
 }
 
-function stopSpeechRecognition() {
-  if (!speechRecognition || !isSpeechActive) return;
+function stopActiveRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  if (activeMediaStream) {
+    activeMediaStream.getTracks().forEach((track) => track.stop());
+    activeMediaStream = null;
+  }
+  mediaRecorder = null;
+}
+
+function downsampleTo16k(float32Array, sourceSampleRate) {
+  if (sourceSampleRate === 16000) return float32Array;
+  const ratio = sourceSampleRate / 16000;
+  const newLength = Math.round(float32Array.length / ratio);
+  const result = new Float32Array(newLength);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+
+  while (offsetResult < result.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+    let accum = 0;
+    let count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < float32Array.length; i += 1) {
+      accum += float32Array[i];
+      count += 1;
+    }
+    result[offsetResult] = count ? accum / count : 0;
+    offsetResult += 1;
+    offsetBuffer = nextOffsetBuffer;
+  }
+
+  return result;
+}
+
+async function decodeAudioBlobTo16kMono(audioBlob) {
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const audioContext = new AudioCtx();
+
   try {
-    speechRecognition.stop();
-  } catch {
-    // Ignore stop errors when recognition is already stopping.
+    const decoded = await audioContext.decodeAudioData(arrayBuffer);
+    const { numberOfChannels, length, sampleRate } = decoded;
+    const mono = new Float32Array(length);
+
+    for (let channel = 0; channel < numberOfChannels; channel += 1) {
+      const data = decoded.getChannelData(channel);
+      for (let i = 0; i < length; i += 1) {
+        mono[i] += data[i] / numberOfChannels;
+      }
+    }
+
+    return downsampleTo16k(mono, sampleRate);
+  } finally {
+    audioContext.close();
   }
 }
 
-function startAutoListening() {
-  if (!autoListenEnabled || !isSpeechUsable() || !speechRecognition) {
-    if (!SpeechRecognitionCtor) {
-      setVoiceStatus('hint.voiceUnsupported');
-    } else if (currentLanguage !== 'en') {
-      setVoiceStatus('hint.voiceLanguageRestricted');
-    } else if (speechPermissionDenied) {
-      setVoiceStatus('hint.voicePermissionDenied');
-    }
+async function recordAudioSnippet(durationMs = 1700) {
+  activeMediaStream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      channelCount: 1,
+      noiseSuppression: true,
+      echoCancellation: true,
+      autoGainControl: true,
+    },
+  });
+
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    mediaRecorder = new MediaRecorder(activeMediaStream);
+
+    mediaRecorder.addEventListener('dataavailable', (event) => {
+      if (event.data && event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    });
+
+    mediaRecorder.addEventListener('stop', () => {
+      const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      stopActiveRecording();
+      resolve(blob);
+    }, { once: true });
+
+    mediaRecorder.addEventListener('error', () => {
+      stopActiveRecording();
+      reject(new Error('MediaRecorderError'));
+    }, { once: true });
+
+    mediaRecorder.start();
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    }, durationMs);
+  });
+}
+
+async function getWhisperTranscriber() {
+  if (!whisperTranscriberPromise) {
+    whisperTranscriberPromise = (async () => {
+      setVoiceStatus('hint.voiceLoading');
+      const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+      env.allowRemoteModels = true;
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+        quantized: true,
+      });
+    })();
+  }
+
+  return whisperTranscriberPromise;
+}
+
+async function startAutoListening() {
+  if (!autoListenEnabled || !isVoiceSupported()) {
+    updateVoiceAvailabilityMessage();
     return;
   }
 
-  if (gameScreen.classList.contains('hidden') || !currentQuestion || secondsLeft <= 0) return;
-  if (isSpeechActive) return;
+  if (isVoiceBusy || gameScreen.classList.contains('hidden') || !currentQuestion || secondsLeft <= 0) return;
 
+  isVoiceBusy = true;
   setVoiceStatus('hint.voiceListening');
 
   try {
-    speechRecognition.start();
-  } catch {
-    // Ignore invalid start attempts; next question retry will restart listening.
-  }
-}
+    const audioBlob = await recordAudioSnippet();
+    setVoiceStatus('hint.voiceTranscribing');
+    const audio16k = await decodeAudioBlobTo16kMono(audioBlob);
+    const transcriber = await getWhisperTranscriber();
+    const output = await transcriber(audio16k, {
+      task: 'transcribe',
+      language: currentLanguage === 'af' ? 'afrikaans' : 'english',
+      return_timestamps: false,
+    });
 
-function initializeSpeechRecognition() {
-  if (!SpeechRecognitionCtor) {
-    setVoiceStatus('hint.voiceUnsupported');
-    return;
-  }
-
-  speechRecognition = new SpeechRecognitionCtor();
-  speechRecognition.continuous = false;
-  speechRecognition.interimResults = false;
-  speechRecognition.maxAlternatives = 1;
-  speechRecognition.lang = 'en-US';
-
-  speechRecognition.addEventListener('start', () => {
-    isSpeechActive = true;
-  });
-
-  speechRecognition.addEventListener('end', () => {
-    isSpeechActive = false;
-  });
-
-  speechRecognition.addEventListener('result', (event) => {
-    const transcript = event.results?.[0]?.[0]?.transcript?.trim() || '';
-    const spokenValue = parseSpokenAnswer(transcript);
+    const transcript = (output?.text || '').trim();
+    const spokenValue = parseSpokenAnswer(transcript, currentLanguage);
 
     if (spokenValue === null || spokenValue < 0 || spokenValue > 144) {
       setVoiceStatus('hint.voiceUnclear', { text: transcript || '...' });
@@ -592,18 +739,19 @@ function initializeSpeechRecognition() {
 
     answerInput.value = String(spokenValue);
     checkAnswer();
-  });
-
-  speechRecognition.addEventListener('error', (event) => {
-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-      speechPermissionDenied = true;
+  } catch (error) {
+    if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
       setVoiceStatus('hint.voicePermissionDenied');
-      return;
+    } else {
+      setVoiceStatus('hint.voiceError');
+      console.error('Voice recognition error', error);
     }
-
-    if (event.error === 'aborted') return;
-    setVoiceStatus('hint.voiceIdle');
-  });
+  } finally {
+    isVoiceBusy = false;
+    if (!gameScreen.classList.contains('hidden') && secondsLeft > 0) {
+      setVoiceStatus('hint.voiceIdle');
+    }
+  }
 }
 
 function checkAnswer() {
@@ -682,7 +830,7 @@ function maybeAutoCheckAnswer() {
 
 function finishGame() {
   autoListenEnabled = false;
-  stopSpeechRecognition();
+  stopActiveRecording();
   clearInterval(timerInterval);
   timerInterval = null;
   showOnly(resultScreen);
@@ -797,7 +945,7 @@ answerInput.addEventListener('input', maybeAutoCheckAnswer);
 languageSelect.addEventListener('change', () => {
   currentLanguage = languageSelect.value;
   localStorage.setItem(STORAGE_KEYS.language, currentLanguage);
-  if (currentLanguage !== 'en') stopSpeechRecognition();
+  stopActiveRecording();
   applyTranslations();
 });
 
@@ -852,7 +1000,6 @@ maxTableSelect.addEventListener('change', () => {
   renderLeaderboard(gameConfig);
 });
 
-initializeSpeechRecognition();
 applyTranslations();
 updateInstallButtonVisibility();
 
