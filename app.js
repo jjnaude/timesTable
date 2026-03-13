@@ -471,6 +471,9 @@ function tablePool(config) {
 function showOnly(screen) {
   [setupScreen, countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
   screen.classList.remove('hidden');
+
+  const isSprintActive = screen === countdownScreen || screen === gameScreen;
+  document.body.classList.toggle('sprint-active', isSprintActive);
 }
 
 function getMode() {
@@ -532,6 +535,7 @@ function setSessionVisibility(loggedIn) {
   }
   if (!loggedIn) {
     [countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
+    document.body.classList.remove('sprint-active');
   }
 }
 
