@@ -846,6 +846,7 @@ function resetForegroundPlacements() {
       translateY: item.translateY,
       scale: item.scale,
       asset: item.asset,
+      alignWithVehicle: true,
     });
 
     leaderboardEntries.slice(0, 5).forEach((row) => {
@@ -859,6 +860,7 @@ function resetForegroundPlacements() {
         scale: item.scale,
         asset: item.asset,
         color: vehicleColor,
+        alignWithVehicle: true,
       });
     });
   });
@@ -914,7 +916,8 @@ function renderForegroundBackgroundLayer() {
 
   vehicleForegroundLayer.innerHTML = visible
     .map((placement) => {
-      const left = placement.worldX - layerOffset;
+      const centerOffset = placement.alignWithVehicle ? width / 2 : 0;
+      const left = placement.worldX - layerOffset + centerOffset;
       const tinted = /^#[0-9a-f]{6}$/i.test(placement.color || '');
       const spriteStyle = tinted
         ? `left:${left}px;background-color:${placement.color};-webkit-mask-image:url('${placement.asset}');mask-image:url('${placement.asset}');transform:translate(-50%, ${placement.translateY}px) scale(${placement.scale});`
