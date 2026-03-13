@@ -1,48 +1,48 @@
 {
   "bicycle": {
-    "scale": 0.9,
+    "scale": 0.7,
     "translateX": 0,
     "translateY": 8,
-    "flipX": true,
+    "flipX": false,
     "garageScale": 0.82
   },
   "hatchback": {
     "scale": 1,
     "translateX": 0,
-    "translateY": 6,
-    "flipX": false,
+    "translateY": 36,
+    "flipX": true,
     "garageScale": 0.9
   },
   "lawnmower": {
-    "scale": 0.92,
+    "scale": 0.5,
     "translateX": 0,
-    "translateY": 8,
-    "flipX": true,
-    "garageScale": 0.84
+    "translateY": 0,
+    "flipX": false,
+    "garageScale": 0.5
   },
   "limousine": {
     "scale": 1.08,
     "translateX": 0,
-    "translateY": 7,
-    "flipX": false,
+    "translateY": 40,
+    "flipX": true,
     "garageScale": 0.85
   },
   "miningtruck": {
     "scale": 1.12,
     "translateX": 0,
-    "translateY": 4,
+    "translateY": 20,
     "flipX": false,
     "garageScale": 0.82
   },
   "monsterTruck": {
     "scale": 1.12,
     "translateX": 0,
-    "translateY": 0,
+    "translateY": 20,
     "flipX": false,
     "garageScale": 0.8
   },
   "motorbike": {
-    "scale": 0.94,
+    "scale": 0.7,
     "translateX": 0,
     "translateY": 9,
     "flipX": true,
@@ -51,36 +51,36 @@
   "movingtruck": {
     "scale": 1.06,
     "translateX": 0,
-    "translateY": 5,
+    "translateY": 20,
     "flipX": false,
     "garageScale": 0.84
   },
   "pickup": {
     "scale": 1,
     "translateX": 0,
-    "translateY": 6,
+    "translateY": 26,
     "flipX": false,
     "garageScale": 0.9
   },
   "racecar": {
     "scale": 0.98,
     "translateX": 0,
-    "translateY": 9,
-    "flipX": false,
+    "translateY": 40,
+    "flipX": true,
     "garageScale": 0.88
   },
   "suv": {
     "scale": 1.02,
     "translateX": 0,
-    "translateY": 6,
-    "flipX": false,
+    "translateY": 30,
+    "flipX": true,
     "garageScale": 0.88
   },
   "tractor": {
     "scale": 1.06,
     "translateX": 0,
-    "translateY": 4,
-    "flipX": true,
+    "translateY": 20,
+    "flipX": false,
     "garageScale": 0.84
   }
 }
