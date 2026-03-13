@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'times-table-sprint-v4';
+const CACHE_VERSION = 'times-table-sprint-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,10 @@ const APP_SHELL = [
   './icons/maskable-192.png',
   './icons/maskable-512.png',
   './assets/stage/environment-day.svg',
+  './assets/background/objects.json',
+  './assets/background/sheep-svgrepo-com.svg',
+  './assets/background/cow-svgrepo-com.svg',
+  './assets/background/cactus-svgrepo-com.svg',
   './assets/vehicles/bicycle.svg',
   './assets/vehicles/hatchback.svg',
   './assets/vehicles/lawnmower.svg',

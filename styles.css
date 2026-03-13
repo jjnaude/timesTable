@@ -102,6 +102,28 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 82' preserveAspectRatio='none'%3E%3Cpath fill='%23a8cf9e' d='M0 61 C62 48 120 35 178 58 C233 81 293 80 351 61 C408 41 467 42 525 56 C530 57 535 57 540 56 L540 82 L0 82 Z'/%3E%3C/svg%3E");
 }
 
+
+.vehicle-stage__foreground-layer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 46px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.vehicle-stage__foreground-object {
+  position: absolute;
+  bottom: 0;
+  width: clamp(42px, 9vw, 62px);
+  aspect-ratio: 1;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  transform-origin: 50% 100%;
+  opacity: 0.95;
+}
 .vehicle-stage__road {
   position: absolute;
   left: 0;

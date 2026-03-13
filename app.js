@@ -30,6 +30,7 @@ const activePlayerNameEl = document.getElementById('active-player-name');
 const logoutBtn = document.getElementById('logout-btn');
 const vehicleStage = document.getElementById('vehicle-stage');
 const vehicleEnvironment = document.getElementById('vehicle-environment');
+const vehicleForegroundLayer = document.getElementById('vehicle-foreground-layer');
 const vehicleSprite = document.getElementById('vehicle-sprite');
 const openGarageBtn = document.getElementById('open-garage-btn');
 const garageModal = document.getElementById('garage-modal');
@@ -681,6 +682,19 @@ const SCORE_TO_WORLD_PIXELS = 50;
 const FAR_LAYER_PARALLAX_FACTOR = 0.35;
 const MID_LAYER_PARALLAX_FACTOR = 0.6;
 const NEAR_LAYER_PARALLAX_FACTOR = 1;
+const NEAREST_LAYER_PARALLAX_FACTOR = 2;
+const WORLD_PIXELS_PER_BACKGROUND_UNIT = 10;
+const BACKGROUND_RENDER_BUFFER_PIXELS = 300;
+
+const DEFAULT_BACKGROUND_OBJECT = {
+  translateY: 0,
+  scale: 1,
+  frequency: 0,
+  levels: [],
+};
+
+let backgroundObjectConfig = [];
+let backgroundPlacementState = null;
 
 let worldOffset = 0;
 
@@ -688,6 +702,123 @@ function applyWorldOffset() {
   vehicleEnvironment.style.setProperty('--hills-offset-far-x', `${-worldOffset * FAR_LAYER_PARALLAX_FACTOR}px`);
   vehicleEnvironment.style.setProperty('--hills-offset-mid-x', `${-worldOffset * MID_LAYER_PARALLAX_FACTOR}px`);
   vehicleEnvironment.style.setProperty('--hills-offset-near-x', `${-worldOffset * NEAR_LAYER_PARALLAX_FACTOR}px`);
+  renderForegroundBackgroundLayer();
+}
+
+function hashSeed(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createSeededRng(seedValue) {
+  let seed = hashSeed(seedValue);
+  return function rng() {
+    seed += 0x6D2B79F5;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function sanitizeBackgroundObject(rawObject = {}) {
+  const translateY = Number(rawObject.translateY);
+  const scale = Number(rawObject.scale);
+  const frequency = Number(rawObject.frequency);
+  const levels = Array.isArray(rawObject.levels)
+    ? rawObject.levels.map((level) => Number(level)).filter((level) => Number.isInteger(level) && level >= 2 && level <= 12)
+    : [];
+
+  return {
+    id: String(rawObject.id || ''),
+    asset: String(rawObject.asset || ''),
+    translateY: Number.isFinite(translateY) ? translateY : DEFAULT_BACKGROUND_OBJECT.translateY,
+    scale: Number.isFinite(scale) ? scale : DEFAULT_BACKGROUND_OBJECT.scale,
+    frequency: Number.isFinite(frequency) && frequency > 0 ? frequency : DEFAULT_BACKGROUND_OBJECT.frequency,
+    levels,
+  };
+}
+
+async function loadBackgroundObjectConfig() {
+  try {
+    const response = await fetch('./assets/background/objects.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const parsed = await response.json();
+    if (!Array.isArray(parsed)) {
+      throw new Error('Background object config must be an array');
+    }
+
+    backgroundObjectConfig = parsed
+      .map((item) => sanitizeBackgroundObject(item))
+      .filter((item) => item.id && item.asset && item.frequency > 0 && item.levels.length > 0);
+  } catch (error) {
+    console.warn('Failed to load background objects config, using no foreground objects.', error);
+    backgroundObjectConfig = [];
+  }
+}
+
+function resetForegroundPlacements() {
+  const seed = `${configKey(gameConfig)}-max:${gameConfig.maxTable}`;
+  const eligibleObjects = backgroundObjectConfig.filter((item) => item.levels.includes(gameConfig.maxTable));
+  backgroundPlacementState = {
+    rng: createSeededRng(seed),
+    generatedUnit: 0,
+    placements: [],
+    eligibleObjects,
+  };
+  renderForegroundBackgroundLayer();
+}
+
+function ensureForegroundPlacementsUntil(targetUnit) {
+  if (!backgroundPlacementState) return;
+
+  while (backgroundPlacementState.generatedUnit < targetUnit) {
+    backgroundPlacementState.generatedUnit += 1;
+    const unit = backgroundPlacementState.generatedUnit;
+
+    backgroundPlacementState.eligibleObjects.forEach((item) => {
+      if (backgroundPlacementState.rng() < item.frequency) {
+        const jitterUnit = backgroundPlacementState.rng();
+        backgroundPlacementState.placements.push({
+          worldX: (unit + jitterUnit) * WORLD_PIXELS_PER_BACKGROUND_UNIT,
+          translateY: item.translateY,
+          scale: item.scale,
+          asset: item.asset,
+        });
+      }
+    });
+  }
+}
+
+function renderForegroundBackgroundLayer() {
+  if (!vehicleForegroundLayer) return;
+  if (!backgroundPlacementState || !backgroundPlacementState.eligibleObjects.length) {
+    vehicleForegroundLayer.innerHTML = '';
+    return;
+  }
+
+  const layerOffset = worldOffset * NEAREST_LAYER_PARALLAX_FACTOR;
+  const width = vehicleForegroundLayer.clientWidth || vehicleEnvironment.clientWidth || 0;
+  const viewStart = Math.max(0, layerOffset - BACKGROUND_RENDER_BUFFER_PIXELS);
+  const viewEnd = layerOffset + width + BACKGROUND_RENDER_BUFFER_PIXELS;
+  const targetUnit = Math.ceil(viewEnd / WORLD_PIXELS_PER_BACKGROUND_UNIT);
+
+  ensureForegroundPlacementsUntil(targetUnit);
+
+  const visible = backgroundPlacementState.placements.filter(
+    (placement) => placement.worldX >= viewStart && placement.worldX <= viewEnd,
+  );
+
+  vehicleForegroundLayer.innerHTML = visible
+    .map((placement) => {
+      const left = placement.worldX - layerOffset;
+      return `<div class="vehicle-stage__foreground-object" style="left:${left}px;background-image:url('${placement.asset}');transform:translate(-50%, ${placement.translateY}px) scale(${placement.scale});"></div>`;
+    })
+    .join('');
 }
 
 function updateWorldOffsetFromScore(scoreDelta) {
@@ -873,6 +1004,7 @@ function startGameRound() {
   currentStreak = 0;
   setFeedbackMessage(gameFeedbackEl);
   resetWorldOffset();
+  resetForegroundPlacements();
 
   showOnly(gameScreen);
   vehicleSprite.classList.add('is-driving');
@@ -924,6 +1056,7 @@ function login(name) {
   closeGarage();
   setSessionVisibility(true);
   resetWorldOffset();
+  resetForegroundPlacements();
 }
 
 function logout() {
@@ -932,6 +1065,8 @@ function logout() {
   vehicleEnvironment.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
   resetWorldOffset();
+  backgroundPlacementState = null;
+  renderForegroundBackgroundLayer();
   closeGarage();
   setSessionVisibility(false);
   loginNameInput.value = '';
@@ -1106,7 +1241,7 @@ vehicleColorInput.addEventListener('input', () => {
 });
 
 async function initializeApp() {
-  await loadVehicleTransforms();
+  await Promise.all([loadVehicleTransforms(), loadBackgroundObjectConfig()]);
   applyVehiclePrefs(DEFAULT_VEHICLE_PREFS);
   applyTranslations();
   updateInstallButtonVisibility();
@@ -1118,6 +1253,7 @@ async function initializeApp() {
   }
 
   resetWorldOffset();
+  resetForegroundPlacements();
 }
 
 initializeApp();
