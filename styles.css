@@ -169,7 +169,7 @@ body {
   }
 
   to {
-    transform: translateX(var(--hill-tile-width));
+    transform: translateX(calc(-1 * var(--hill-tile-width)));
   }
 }
 
