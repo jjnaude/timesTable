@@ -14,12 +14,9 @@ const resultScreen = document.getElementById('result-screen');
 const countdownEl = document.getElementById('countdown');
 const timeLeftEl = document.getElementById('time-left');
 const scoreEl = document.getElementById('score');
-const fuelStatusTextEl = document.getElementById('fuel-status-text');
-const fuelMeterFillEl = document.getElementById('fuel-meter-fill');
-const turboStatusEl = document.getElementById('turbo-status');
 const questionEl = document.getElementById('question');
 const answerInput = document.getElementById('answer');
-const submitAnswerBtn = document.getElementById('submit-answer');
+const onscreenKeypad = document.getElementById('onscreen-keypad');
 const finalScoreEl = document.getElementById('final-score');
 const celebrationEl = document.getElementById('celebration');
 const gameFeedbackEl = document.getElementById('game-feedback');
@@ -552,13 +549,13 @@ function applyTranslations() {
   garageDialog.setAttribute('aria-label', t('aria.garageDialog'));
   garageGrid.setAttribute('aria-label', t('aria.vehicleVariant'));
   vehicleColorInput.setAttribute('aria-label', t('aria.vehicleColor'));
+  onscreenKeypad.setAttribute('aria-label', t('aria.numberKeypad'));
 
   if (countdownEl.textContent === TRANSLATIONS.en['countdown.go'] || countdownEl.textContent === TRANSLATIONS.af['countdown.go']) {
     countdownEl.textContent = t('countdown.go');
   }
 
   renderLeaderboard(gameConfig);
-  updateFuelUi();
   const currentPrefs = getVehiclePrefs(activeUser || '');
   applyVehiclePrefs(currentPrefs);
 }
@@ -692,39 +689,6 @@ function getAchievedMilestones(currentValue, milestones, previousValue) {
   return milestones.filter((milestone) => currentValue >= milestone && previousValue < milestone);
 }
 
-let fuel = 0;
-let turboRemaining = 0;
-let consecutiveCorrect = 0;
-
-const MAX_FUEL = 5;
-const TURBO_CORRECT_WINDOW = 3;
-const TURBO_BONUS = 1;
-const SCORE_TO_ROAD_PIXELS = 10;
-
-function updateVehicleRoadPosition(scoreValue = score) {
-  const environmentWidth = vehicleEnvironment.clientWidth;
-  if (!environmentWidth) return;
-
-  const maxTravel = Math.max(0, (environmentWidth - openGarageBtn.offsetWidth) / 2 - 8);
-  const rawOffset = scoreValue * SCORE_TO_ROAD_PIXELS;
-  const clampedOffset = Math.max(-maxTravel, Math.min(maxTravel, rawOffset));
-  openGarageBtn.style.setProperty('--vehicle-road-progress-x', `${clampedOffset}px`);
-}
-
-
-function updateFuelUi() {
-  const ratio = (fuel / MAX_FUEL) * 100;
-  fuelStatusTextEl.textContent = t('label.fuelStatus', { current: fuel, max: MAX_FUEL });
-  fuelMeterFillEl.style.width = `${ratio}%`;
-
-  const turboActive = turboRemaining > 0;
-  turboStatusEl.textContent = turboActive
-    ? t('label.turboActive', { remaining: turboRemaining, bonus: TURBO_BONUS })
-    : t('label.turboInactive');
-  turboStatusEl.classList.toggle('is-active', turboActive);
-  fuelMeterFillEl.classList.toggle('is-turbo', turboActive);
-}
-
 function makeQuestion(config, allowRepeat = false) {
   const tables = tablePool(config);
   let question;
@@ -745,7 +709,6 @@ function makeQuestion(config, allowRepeat = false) {
   lastQuestionKey = question.key;
   questionEl.textContent = `${question.table} × ${question.multiplier} = ?`;
   answerInput.value = '';
-  answerInput.focus();
 }
 
 function beep({ frequency, duration = 0.18, type = 'sine', volume = 0.06 }) {
@@ -789,25 +752,7 @@ function checkAnswer() {
   if (val === currentQuestion.answer) {
     score += 1;
     currentStreak += 1;
-    consecutiveCorrect += 1;
-    let pointsAwarded = 1;
-
-    if (turboRemaining > 0) {
-      pointsAwarded += TURBO_BONUS;
-      turboRemaining -= 1;
-    }
-
-    score += pointsAwarded;
-    fuel = Math.min(MAX_FUEL, fuel + 1);
-
-    if (fuel === MAX_FUEL && turboRemaining === 0) {
-      turboRemaining = TURBO_CORRECT_WINDOW;
-      fuel = 0;
-    }
-
     scoreEl.textContent = String(score);
-    updateVehicleRoadPosition();
-    updateFuelUi();
     successSound();
 
     const streakHits = getAchievedMilestones(currentStreak, STREAK_MILESTONES, previousStreak);
@@ -825,17 +770,12 @@ function checkAnswer() {
 
     makeQuestion(gameConfig, false);
   } else {
-    consecutiveCorrect = 0;
-    fuel = Math.max(0, fuel - 1);
     score -= 1;
     currentStreak = 0;
     scoreEl.textContent = String(score);
-    updateVehicleRoadPosition();
-    updateFuelUi();
     failSound();
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
     answerInput.value = '';
-    answerInput.focus();
   }
 }
 
@@ -891,16 +831,11 @@ function finishGame() {
 function startGameRound() {
   score = 0;
   secondsLeft = 60;
-  fuel = 0;
-  turboRemaining = 0;
-  consecutiveCorrect = 0;
   scoreEl.textContent = '0';
   timeLeftEl.textContent = '60';
   lastQuestionKey = null;
   currentStreak = 0;
   setFeedbackMessage(gameFeedbackEl);
-  updateVehicleRoadPosition(0);
-  updateFuelUi();
 
   showOnly(gameScreen);
   vehicleSprite.classList.add('is-driving');
@@ -993,8 +928,61 @@ languageSelect.addEventListener('change', () => {
   applyTranslations();
 });
 
-submitAnswerBtn.addEventListener('click', checkAnswer);
-answerInput.addEventListener('keydown', (event) => {
+
+
+
+function appendAnswerDigit(digit) {
+  const nextValue = `${answerInput.value}${digit}`;
+  answerInput.value = nextValue.replace(/^0+(?=\d)/, '');
+  maybeAutoCheckAnswer();
+}
+
+function backspaceAnswer() {
+  answerInput.value = answerInput.value.slice(0, -1);
+}
+
+function clearAnswer() {
+  answerInput.value = '';
+}
+
+function handleKeypadAction(action) {
+  if (action === 'submit') {
+    checkAnswer();
+  } else if (action === 'backspace') {
+    backspaceAnswer();
+  } else if (action === 'clear') {
+    clearAnswer();
+  }
+}
+
+onscreenKeypad.addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button) return;
+
+  const key = button.dataset.key;
+  if (key) {
+    appendAnswerDigit(key);
+    return;
+  }
+
+  const action = button.dataset.action;
+  if (action) handleKeypadAction(action);
+});
+
+document.addEventListener('keydown', (event) => {
+  if (gameScreen.classList.contains('hidden')) return;
+  if (event.key >= '0' && event.key <= '9') {
+    event.preventDefault();
+    appendAnswerDigit(event.key);
+    return;
+  }
+
+  if (event.key === 'Backspace') {
+    event.preventDefault();
+    backspaceAnswer();
+    return;
+  }
+
   if (event.key === 'Enter') {
     event.preventDefault();
     checkAnswer();

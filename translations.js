@@ -46,6 +46,8 @@ const TRANSLATIONS = {
     'label.turboActive': 'Turbo active: +{bonus} bonus for {remaining} correct answers',
     'label.turboInactive': 'Turbo inactive',
     'button.submit': 'Submit',
+    'button.clearAnswer': 'Clear',
+    'button.backspace': 'Backspace',
     'hint.enter': 'Press Enter to answer quickly!',
     'title.timesUp': "Time's up!",
     'label.finalScore': 'Your final score:',
@@ -75,6 +77,7 @@ const TRANSLATIONS = {
     'aria.garageDialog': 'Garage dialog',
     'aria.vehicleVariant': 'Vehicle style',
     'aria.vehicleColor': 'Vehicle colour',
+    'aria.numberKeypad': 'Number keypad',
   },
   af: {
     languageName: 'Afrikaans',
@@ -123,6 +126,8 @@ const TRANSLATIONS = {
     'label.turboActive': 'Turbo aktief: +{bonus} bonus vir {remaining} korrekte antwoorde',
     'label.turboInactive': 'Turbo onaktief',
     'button.submit': 'Dien in',
+    'button.clearAnswer': 'Maak skoon',
+    'button.backspace': 'Vee terug',
     'hint.enter': 'Druk Enter om vinnig te antwoord!',
     'title.timesUp': 'Tyd is op!',
     'label.finalScore': 'Jou eindtelling:',
@@ -152,5 +157,6 @@ const TRANSLATIONS = {
     'aria.garageDialog': 'Motorhuis dialoog',
     'aria.vehicleVariant': 'Voertuigstyl',
     'aria.vehicleColor': 'Verf jou tjor!',
+    'aria.numberKeypad': 'Nommer-sleutelbord',
   },
 };

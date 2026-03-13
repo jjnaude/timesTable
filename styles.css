@@ -423,10 +423,58 @@ button.secondary:active {
 }
 
 .question {
-  margin-top: 18px;
-  font-size: 2.3rem;
+  margin-top: 14px;
+  font-size: 2.1rem;
   text-align: center;
   font-weight: bold;
+}
+
+.answer-display {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  background: #f4f8ff;
+  border: 2px solid #bfd5f3;
+  color: #193c73;
+}
+
+.onscreen-keypad {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.keypad-btn {
+  margin: 0;
+  min-height: 56px;
+  border-radius: 12px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: linear-gradient(180deg, #ffea70 0%, #ffc83d 100%);
+  color: #5a3500;
+  border: 2px solid #ffb400;
+}
+
+.keypad-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.keypad-btn--secondary {
+  font-size: 1.15rem;
+  background: linear-gradient(180deg, #d9ebff 0%, #b5d7ff 100%);
+  color: #123f7a;
+  border-color: #8dbeff;
+}
+
+.keypad-btn--submit {
+  grid-column: 1 / -1;
+  font-size: 1.25rem;
+  background: linear-gradient(180deg, #69e58b 0%, #31c56a 100%);
+  color: #083c1e;
+  border-color: #20af58;
 }
 
 .hint {
@@ -540,53 +588,6 @@ li {
   margin-top: 0;
 }
 
-.fuel-panel {
-  margin-top: 12px;
-  padding: 10px;
-  border: 1px solid #d7e4f4;
-  border-radius: 10px;
-  background: #f7fbff;
-}
-
-.fuel-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-weight: bold;
-}
-
-.fuel-meter {
-  margin-top: 8px;
-  width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  background: #dce7f6;
-  overflow: hidden;
-}
-
-.fuel-meter__fill {
-  width: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #44c06a, #1ea55b);
-  transition: width 180ms ease-in-out, background 180ms ease-in-out;
-}
-
-.fuel-meter__fill.is-turbo {
-  background: linear-gradient(90deg, #ffd447, #ff9b3d);
-}
-
-.turbo-status {
-  margin: 8px 0 0;
-  font-size: 0.95rem;
-  color: #4e5f76;
-}
-
-.turbo-status.is-active {
-  color: #9a5a00;
-  font-weight: bold;
-}
-
 
 @media (max-width: 560px) {
 
@@ -613,4 +614,18 @@ li {
   .vehicle-stage__sprite {
     width: clamp(84px, 28vw, 108px);
   }
+
+  .question {
+    font-size: 1.8rem;
+  }
+
+  .answer-display {
+    font-size: 1.8rem;
+  }
+
+  .keypad-btn {
+    min-height: 52px;
+    font-size: 1.4rem;
+  }
 }
+
