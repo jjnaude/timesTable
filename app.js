@@ -677,6 +677,33 @@ let currentStreak = 0;
 const STREAK_MILESTONES = [5, 10, 15, 20];
 const SCORE_MILESTONES = [10, 20, 30, 40, 50];
 
+const SCORE_TO_WORLD_PIXELS = 50;
+const FAR_LAYER_PARALLAX_FACTOR = 0.35;
+const MID_LAYER_PARALLAX_FACTOR = 0.6;
+const NEAR_LAYER_PARALLAX_FACTOR = 1;
+
+let worldOffset = 0;
+
+function applyWorldOffset() {
+  vehicleEnvironment.style.setProperty('--hills-offset-far-x', `${-worldOffset * FAR_LAYER_PARALLAX_FACTOR}px`);
+  vehicleEnvironment.style.setProperty('--hills-offset-mid-x', `${-worldOffset * MID_LAYER_PARALLAX_FACTOR}px`);
+  vehicleEnvironment.style.setProperty('--hills-offset-near-x', `${-worldOffset * NEAR_LAYER_PARALLAX_FACTOR}px`);
+}
+
+function updateWorldOffsetFromScore(scoreDelta) {
+  worldOffset += scoreDelta * SCORE_TO_WORLD_PIXELS;
+  applyWorldOffset();
+}
+
+function resetWorldOffset() {
+  worldOffset = 0;
+  applyWorldOffset();
+}
+
+function updateVehicleRoadPosition() {
+  applyWorldOffset();
+}
+
 function setFeedbackMessage(element, message = '', state = '') {
   if (!element) return;
   element.textContent = message;
@@ -712,17 +739,24 @@ function makeQuestion(config, allowRepeat = false) {
 }
 
 function beep({ frequency, duration = 0.18, type = 'sine', volume = 0.06 }) {
-  const audio = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.type = type;
-  osc.frequency.value = frequency;
-  gain.gain.value = volume;
-  osc.connect(gain);
-  gain.connect(audio.destination);
-  osc.start();
-  osc.stop(audio.currentTime + duration);
-  osc.onended = () => audio.close();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return;
+
+  try {
+    const audio = new AudioCtx();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + duration);
+    osc.onended = () => audio.close();
+  } catch (error) {
+    console.warn('Unable to play countdown/game sound.', error);
+  }
 }
 
 function successSound() {
@@ -856,9 +890,6 @@ function startGameRound() {
 
 function startCountdownThenGame() {
   showOnly(countdownScreen);
-  countdownEl.textContent = '3';
-  beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
-
   const countdownSteps = [
     { label: '3', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
     { label: '2', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
@@ -870,12 +901,11 @@ function startCountdownThenGame() {
     setTimeout(() => {
       countdownEl.textContent = step.label;
       beep(step);
-
-      if (index === countdownSteps.length - 1) {
-        setTimeout(startGameRound, 600);
-      }
     }, index * 1000);
   });
+
+  const totalCountdownDurationMs = (countdownSteps.length - 1) * 1000 + 600;
+  setTimeout(startGameRound, totalCountdownDurationMs);
 }
 
 function login(name) {
