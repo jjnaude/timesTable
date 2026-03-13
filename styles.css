@@ -249,9 +249,6 @@ body.modal-open {
 
 .garage-grid__icon {
   --vehicle-scale: 1;
-  --vehicle-translate-x: 0px;
-  --vehicle-translate-y: 0px;
-  --vehicle-flip-x: 1;
   width: 42px;
   aspect-ratio: 1;
   background-color: var(--vehicle-color, #2c7be5);
@@ -263,8 +260,8 @@ body.modal-open {
   mask-repeat: no-repeat;
   mask-position: center;
   mask-size: contain;
-  transform: translate(var(--vehicle-translate-x), var(--vehicle-translate-y)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
-  transform-origin: 50% 100%;
+  transform: scale(var(--vehicle-scale));
+  transform-origin: 50% 50%;
 }
 
 .garage-grid__name {
