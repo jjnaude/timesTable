@@ -32,6 +32,7 @@ const loginBtn = document.getElementById('login-btn');
 const activePlayerNameEl = document.getElementById('active-player-name');
 const logoutBtn = document.getElementById('logout-btn');
 const vehicleStage = document.getElementById('vehicle-stage');
+const vehicleEnvironment = document.getElementById('vehicle-environment');
 const vehicleSprite = document.getElementById('vehicle-sprite');
 const openGarageBtn = document.getElementById('open-garage-btn');
 const garageModal = document.getElementById('garage-modal');
@@ -846,6 +847,7 @@ function maybeAutoCheckAnswer() {
 function finishGame() {
   clearInterval(timerInterval);
   vehicleSprite.classList.remove('is-driving');
+  vehicleEnvironment.classList.remove('is-driving');
   timerInterval = null;
   showOnly(resultScreen);
   finalScoreEl.textContent = String(score);
@@ -892,6 +894,7 @@ function startGameRound() {
 
   showOnly(gameScreen);
   vehicleSprite.classList.add('is-driving');
+  vehicleEnvironment.classList.add('is-driving');
   makeQuestion(gameConfig);
 
   timerInterval = setInterval(() => {
@@ -947,6 +950,7 @@ function login(name) {
 function logout() {
   activeUser = null;
   vehicleSprite.classList.remove('is-driving');
+  vehicleEnvironment.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
   closeGarage();
   setSessionVisibility(false);
