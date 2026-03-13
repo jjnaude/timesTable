@@ -712,17 +712,24 @@ function makeQuestion(config, allowRepeat = false) {
 }
 
 function beep({ frequency, duration = 0.18, type = 'sine', volume = 0.06 }) {
-  const audio = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.type = type;
-  osc.frequency.value = frequency;
-  gain.gain.value = volume;
-  osc.connect(gain);
-  gain.connect(audio.destination);
-  osc.start();
-  osc.stop(audio.currentTime + duration);
-  osc.onended = () => audio.close();
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return;
+
+  try {
+    const audio = new AudioCtx();
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    gain.gain.value = volume;
+    osc.connect(gain);
+    gain.connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + duration);
+    osc.onended = () => audio.close();
+  } catch (error) {
+    console.warn('Unable to play countdown/game sound.', error);
+  }
 }
 
 function successSound() {
@@ -856,9 +863,6 @@ function startGameRound() {
 
 function startCountdownThenGame() {
   showOnly(countdownScreen);
-  countdownEl.textContent = '3';
-  beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
-
   const countdownSteps = [
     { label: '3', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
     { label: '2', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
@@ -870,12 +874,11 @@ function startCountdownThenGame() {
     setTimeout(() => {
       countdownEl.textContent = step.label;
       beep(step);
-
-      if (index === countdownSteps.length - 1) {
-        setTimeout(startGameRound, 600);
-      }
     }, index * 1000);
   });
+
+  const totalCountdownDurationMs = (countdownSteps.length - 1) * 1000 + 600;
+  setTimeout(startGameRound, totalCountdownDurationMs);
 }
 
 function login(name) {
