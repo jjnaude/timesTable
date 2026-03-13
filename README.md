@@ -64,3 +64,16 @@ Your app will be available at:
   - Correct: score +1, positive sound, next question.
   - Wrong: score -1, negative sound, same question repeats.
 - Top 5 scores are stored separately for each mode + table setting.
+
+
+## Vehicle transform tuning
+
+Vehicle sprite alignment and orientation are configured in `assets/vehicles/transforms.json` (keyed by variant id).
+
+- `scale`: overall sprite scale.
+- `translateX`: horizontal nudge in pixels.
+- `translateY`: vertical nudge in pixels (positive is downward).
+- `flipX`: set `true` for source art that faces left so it is mirrored to face right.
+- `garageScale` (optional): override icon scale in the garage grid while keeping the same stage transform policy.
+
+To tune values, run the app locally, open the garage, and cycle all unlocked variants. Confirm each vehicle preview and stage sprite faces right and that wheels visually sit on the foreground grass baseline.

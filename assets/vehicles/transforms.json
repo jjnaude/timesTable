@@ -1,0 +1,86 @@
+{
+  "bicycle": {
+    "scale": 0.9,
+    "translateX": 0,
+    "translateY": 8,
+    "flipX": true,
+    "garageScale": 0.82
+  },
+  "hatchback": {
+    "scale": 1,
+    "translateX": 0,
+    "translateY": 6,
+    "flipX": false,
+    "garageScale": 0.9
+  },
+  "lawnmower": {
+    "scale": 0.92,
+    "translateX": 0,
+    "translateY": 8,
+    "flipX": true,
+    "garageScale": 0.84
+  },
+  "limousine": {
+    "scale": 1.08,
+    "translateX": 0,
+    "translateY": 7,
+    "flipX": false,
+    "garageScale": 0.85
+  },
+  "miningtruck": {
+    "scale": 1.12,
+    "translateX": 0,
+    "translateY": 4,
+    "flipX": false,
+    "garageScale": 0.82
+  },
+  "monsterTruck": {
+    "scale": 1.12,
+    "translateX": 0,
+    "translateY": 0,
+    "flipX": false,
+    "garageScale": 0.8
+  },
+  "motorbike": {
+    "scale": 0.94,
+    "translateX": 0,
+    "translateY": 9,
+    "flipX": true,
+    "garageScale": 0.85
+  },
+  "movingtruck": {
+    "scale": 1.06,
+    "translateX": 0,
+    "translateY": 5,
+    "flipX": false,
+    "garageScale": 0.84
+  },
+  "pickup": {
+    "scale": 1,
+    "translateX": 0,
+    "translateY": 6,
+    "flipX": false,
+    "garageScale": 0.9
+  },
+  "racecar": {
+    "scale": 0.98,
+    "translateX": 0,
+    "translateY": 9,
+    "flipX": false,
+    "garageScale": 0.88
+  },
+  "suv": {
+    "scale": 1.02,
+    "translateX": 0,
+    "translateY": 6,
+    "flipX": false,
+    "garageScale": 0.88
+  },
+  "tractor": {
+    "scale": 1.06,
+    "translateX": 0,
+    "translateY": 4,
+    "flipX": true,
+    "garageScale": 0.84
+  }
+}
