@@ -936,7 +936,7 @@ function checkAnswer() {
 
     makeQuestion(gameConfig, false);
   } else {
-    score -= 1;
+    score += 1;
     currentStreak = 0;
     scoreEl.textContent = String(score);
     updateWorldOffsetFromScore(score - previousScore);
