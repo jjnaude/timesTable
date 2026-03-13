@@ -34,10 +34,23 @@ const logoutBtn = document.getElementById('logout-btn');
 const vehicleStage = document.getElementById('vehicle-stage');
 const vehicleSprite = document.getElementById('vehicle-sprite');
 const openGarageBtn = document.getElementById('open-garage-btn');
-const garagePanel = document.getElementById('garage-panel');
+const garageModal = document.getElementById('garage-modal');
+const garageDialog = document.getElementById('garage-dialog');
+const garageBackdrop = document.getElementById('garage-backdrop');
 const closeGarageBtn = document.getElementById('close-garage-btn');
 const garageGrid = document.getElementById('garage-grid');
 const vehicleColorInput = document.getElementById('vehicle-color');
+
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+let lastGarageFocus = null;
 
 const STORAGE_KEYS = {
   language: 'language',
@@ -271,15 +284,44 @@ function renderGarage(selectedVariant, color) {
   });
 }
 
+function getGarageFocusableElements() {
+  if (!garageDialog) return [];
+  return Array.from(garageDialog.querySelectorAll(FOCUSABLE_SELECTOR));
+}
+
+function isGarageOpen() {
+  return !garageModal.classList.contains('hidden');
+}
+
+function closeGarage({ restoreFocus = true } = {}) {
+  const wasOpen = isGarageOpen();
+  garageModal.classList.add('hidden');
+  garageModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+
+  if (!wasOpen || !restoreFocus) return;
+
+  if (openGarageBtn && !openGarageBtn.disabled) {
+    openGarageBtn.focus();
+  } else if (lastGarageFocus instanceof HTMLElement && document.contains(lastGarageFocus)) {
+    lastGarageFocus.focus();
+  }
+}
+
 function openGarage() {
   if (!activeUser) return;
-  garagePanel.classList.remove('hidden');
-}
+  lastGarageFocus = document.activeElement;
+  garageModal.classList.remove('hidden');
+  garageModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
 
-function closeGarage() {
-  garagePanel.classList.add('hidden');
+  const focusable = getGarageFocusableElements();
+  if (focusable.length) {
+    focusable[0].focus();
+  } else {
+    garageDialog.focus();
+  }
 }
-
 
 function getUserProgress(name) {
   const normalized = normalizeName(name);
@@ -428,7 +470,7 @@ function setSessionVisibility(loggedIn) {
   setupScreen.classList.toggle('hidden', !loggedIn);
   vehicleStage.classList.toggle('hidden', !loggedIn);
   if (!loggedIn) {
-    garagePanel.classList.add('hidden');
+    closeGarage({ restoreFocus: false });
   }
   if (!loggedIn) {
     [countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
@@ -446,6 +488,8 @@ function applyTranslations() {
   languageSelect.setAttribute('aria-label', t('aria.language'));
   loginNameInput.setAttribute('aria-label', t('aria.loginName'));
   openGarageBtn.setAttribute('aria-label', t('aria.openGarage'));
+  closeGarageBtn.setAttribute('aria-label', t('aria.closeGarage'));
+  garageDialog.setAttribute('aria-label', t('aria.garageDialog'));
   garageGrid.setAttribute('aria-label', t('aria.vehicleVariant'));
   vehicleColorInput.setAttribute('aria-label', t('aria.vehicleColor'));
 
@@ -897,11 +941,32 @@ loginNameInput.addEventListener('keydown', (event) => {
 
 logoutBtn.addEventListener('click', logout);
 openGarageBtn.addEventListener('click', openGarage);
-closeGarageBtn.addEventListener('click', closeGarage);
+closeGarageBtn.addEventListener('click', () => closeGarage());
+garageBackdrop.addEventListener('click', () => closeGarage());
 
 document.addEventListener('keydown', (event) => {
+  if (!isGarageOpen()) return;
+
   if (event.key === 'Escape') {
+    event.preventDefault();
     closeGarage();
+    return;
+  }
+
+  if (event.key !== 'Tab') return;
+
+  const focusable = getGarageFocusableElements();
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 });
 
