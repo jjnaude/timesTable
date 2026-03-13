@@ -124,6 +124,17 @@ body {
   transform-origin: 50% 100%;
   opacity: 0.95;
 }
+
+.vehicle-stage__foreground-object.is-tinted {
+  background-image: none;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+
 .vehicle-stage__road {
   position: absolute;
   left: 0;
