@@ -699,6 +699,17 @@ let consecutiveCorrect = 0;
 const MAX_FUEL = 5;
 const TURBO_CORRECT_WINDOW = 3;
 const TURBO_BONUS = 1;
+const SCORE_TO_ROAD_PIXELS = 10;
+
+function updateVehicleRoadPosition(scoreValue = score) {
+  const environmentWidth = vehicleEnvironment.clientWidth;
+  if (!environmentWidth) return;
+
+  const maxTravel = Math.max(0, (environmentWidth - openGarageBtn.offsetWidth) / 2 - 8);
+  const rawOffset = scoreValue * SCORE_TO_ROAD_PIXELS;
+  const clampedOffset = Math.max(-maxTravel, Math.min(maxTravel, rawOffset));
+  openGarageBtn.style.setProperty('--vehicle-road-progress-x', `${clampedOffset}px`);
+}
 
 
 function updateFuelUi() {
@@ -795,6 +806,7 @@ function checkAnswer() {
     }
 
     scoreEl.textContent = String(score);
+    updateVehicleRoadPosition();
     updateFuelUi();
     successSound();
 
@@ -818,6 +830,7 @@ function checkAnswer() {
     score -= 1;
     currentStreak = 0;
     scoreEl.textContent = String(score);
+    updateVehicleRoadPosition();
     updateFuelUi();
     failSound();
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
@@ -886,6 +899,7 @@ function startGameRound() {
   lastQuestionKey = null;
   currentStreak = 0;
   setFeedbackMessage(gameFeedbackEl);
+  updateVehicleRoadPosition(0);
   updateFuelUi();
 
   showOnly(gameScreen);
@@ -941,6 +955,7 @@ function login(name) {
   saveVehiclePrefs(activeUser, appliedPrefs);
   closeGarage();
   setSessionVisibility(true);
+  updateVehicleRoadPosition();
 }
 
 function logout() {
@@ -948,11 +963,16 @@ function logout() {
   vehicleSprite.classList.remove('is-driving');
   vehicleEnvironment.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
+  updateVehicleRoadPosition(0);
   closeGarage();
   setSessionVisibility(false);
   loginNameInput.value = '';
   loginNameInput.focus();
 }
+
+window.addEventListener('resize', () => {
+  updateVehicleRoadPosition();
+});
 
 startBtn.addEventListener('click', () => {
   gameConfig = {
@@ -1075,6 +1095,8 @@ async function initializeApp() {
   } else {
     setSessionVisibility(false);
   }
+
+  updateVehicleRoadPosition(0);
 }
 
 initializeApp();
