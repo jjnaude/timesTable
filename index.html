@@ -105,21 +105,33 @@
           <div><span data-i18n="label.time">Time</span>: <strong id="time-left">60</strong>s</div>
           <div><span data-i18n="label.score">Score</span>: <strong id="score">0</strong></div>
         </div>
-        <div class="fuel-panel" role="status" aria-live="polite" aria-atomic="true">
-          <div class="fuel-panel__header">
-            <span data-i18n="label.fuel">Fuel</span>
-            <strong id="fuel-status-text">Fuel: 0/5</strong>
-          </div>
-          <div class="fuel-meter" aria-hidden="true">
-            <div id="fuel-meter-fill" class="fuel-meter__fill"></div>
-          </div>
-          <p id="turbo-status" class="turbo-status" data-i18n="label.turboInactive">Turbo inactive</p>
-        </div>
         <div id="question" class="question">2 × 3 = ?</div>
         <div id="game-feedback" class="feedback hidden" aria-live="polite"></div>
-        <input id="answer" type="number" inputmode="numeric" autocomplete="off" aria-label="Your answer" />
-        <button id="submit-answer" class="primary" data-i18n="button.submit">Submit</button>
-        <p class="hint" data-i18n="hint.enter">Press Enter to answer quickly!</p>
+        <input
+          id="answer"
+          class="answer-display"
+          type="text"
+          inputmode="none"
+          readonly
+          tabindex="-1"
+          autocomplete="off"
+          aria-label="Your answer"
+        />
+        <div id="onscreen-keypad" class="onscreen-keypad" aria-label="Number keypad">
+          <button type="button" class="keypad-btn" data-key="1">1</button>
+          <button type="button" class="keypad-btn" data-key="2">2</button>
+          <button type="button" class="keypad-btn" data-key="3">3</button>
+          <button type="button" class="keypad-btn" data-key="4">4</button>
+          <button type="button" class="keypad-btn" data-key="5">5</button>
+          <button type="button" class="keypad-btn" data-key="6">6</button>
+          <button type="button" class="keypad-btn" data-key="7">7</button>
+          <button type="button" class="keypad-btn" data-key="8">8</button>
+          <button type="button" class="keypad-btn" data-key="9">9</button>
+          <button type="button" class="keypad-btn keypad-btn--secondary" data-action="clear" data-i18n="button.clearAnswer">Clear</button>
+          <button type="button" class="keypad-btn" data-key="0">0</button>
+          <button type="button" class="keypad-btn keypad-btn--secondary" data-action="backspace" data-i18n="button.backspace">⌫</button>
+          <button type="button" class="keypad-btn keypad-btn--submit" data-action="submit" data-i18n="button.submit">Submit</button>
+        </div>
       </section>
 
       <section id="result-screen" class="card hidden">
