@@ -677,6 +677,33 @@ let currentStreak = 0;
 const STREAK_MILESTONES = [5, 10, 15, 20];
 const SCORE_MILESTONES = [10, 20, 30, 40, 50];
 
+const SCORE_TO_WORLD_PIXELS = 8;
+const FAR_LAYER_PARALLAX_FACTOR = 0.35;
+const MID_LAYER_PARALLAX_FACTOR = 0.6;
+const NEAR_LAYER_PARALLAX_FACTOR = 1;
+
+let worldOffset = 0;
+
+function applyWorldOffset() {
+  vehicleEnvironment.style.setProperty('--hills-offset-far-x', `${worldOffset * FAR_LAYER_PARALLAX_FACTOR}px`);
+  vehicleEnvironment.style.setProperty('--hills-offset-mid-x', `${worldOffset * MID_LAYER_PARALLAX_FACTOR}px`);
+  vehicleEnvironment.style.setProperty('--hills-offset-near-x', `${worldOffset * NEAR_LAYER_PARALLAX_FACTOR}px`);
+}
+
+function updateWorldOffsetFromScore(scoreDelta) {
+  worldOffset += scoreDelta * SCORE_TO_WORLD_PIXELS;
+  applyWorldOffset();
+}
+
+function resetWorldOffset() {
+  worldOffset = 0;
+  applyWorldOffset();
+}
+
+function updateVehicleRoadPosition() {
+  applyWorldOffset();
+}
+
 function setFeedbackMessage(element, message = '', state = '') {
   if (!element) return;
   element.textContent = message;
