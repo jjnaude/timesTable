@@ -69,6 +69,10 @@ body {
 
 .vehicle-stage__sprite {
   --vehicle-color: #2c7be5;
+  --vehicle-scale: 1;
+  --vehicle-translate-x: 0px;
+  --vehicle-translate-y: 0px;
+  --vehicle-flip-x: 1;
   width: clamp(88px, 22vw, 118px);
   aspect-ratio: 1;
   background-color: var(--vehicle-color);
@@ -80,6 +84,8 @@ body {
   mask-repeat: no-repeat;
   mask-size: contain;
   mask-image: var(--vehicle-mask-image, url('./assets/vehicles/pickup.svg'));
+  transform: translate(var(--vehicle-translate-x), var(--vehicle-translate-y)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
+  transform-origin: 50% 100%;
   filter: drop-shadow(0 8px 10px rgba(17, 50, 86, 0.28));
   animation: vehicleIdle 1.6s ease-in-out infinite;
   z-index: 1;
@@ -135,6 +141,10 @@ body {
 }
 
 .garage-grid__icon {
+  --vehicle-scale: 1;
+  --vehicle-translate-x: 0px;
+  --vehicle-translate-y: 0px;
+  --vehicle-flip-x: 1;
   width: 42px;
   aspect-ratio: 1;
   background-color: var(--vehicle-color, #2c7be5);
@@ -146,6 +156,8 @@ body {
   mask-repeat: no-repeat;
   mask-position: center;
   mask-size: contain;
+  transform: translate(var(--vehicle-translate-x), var(--vehicle-translate-y)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
+  transform-origin: 50% 100%;
 }
 
 .garage-grid__name {
@@ -166,20 +178,20 @@ body {
 @keyframes vehicleIdle {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(var(--vehicle-translate-x), var(--vehicle-translate-y)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
   }
   50% {
-    transform: translateY(-2px);
+    transform: translate(var(--vehicle-translate-x), calc(var(--vehicle-translate-y) - 2px)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
   }
 }
 
 @keyframes vehicleDrive {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(var(--vehicle-translate-x), var(--vehicle-translate-y)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
   }
   50% {
-    transform: translateY(1px);
+    transform: translate(var(--vehicle-translate-x), calc(var(--vehicle-translate-y) + 1px)) scaleX(var(--vehicle-flip-x)) scale(var(--vehicle-scale));
   }
 }
 

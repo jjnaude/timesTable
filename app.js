@@ -108,6 +108,15 @@ const DEFAULT_VEHICLE_PREFS = {
 
 const VEHICLE_VARIANT_LIST = Object.keys(VEHICLE_ASSETS);
 const VEHICLE_VARIANTS = new Set(VEHICLE_VARIANT_LIST);
+const DEFAULT_VEHICLE_TRANSFORM = {
+  scale: 1,
+  translateX: 0,
+  translateY: 0,
+  flipX: false,
+  garageScale: null,
+};
+
+let vehicleTransforms = {};
 
 function vehiclePrefsKey(name) {
   return `${STORAGE_KEYS.vehiclePrefsPrefix}${normalizeName(name)}`;
@@ -148,13 +157,59 @@ function isVehicleUnlocked(variant) {
   return getUnlockedVehicleVariants().includes(variant);
 }
 
+function sanitizeVehicleTransform(rawTransform = {}) {
+  const safeScale = Number(rawTransform.scale);
+  const safeTranslateX = Number(rawTransform.translateX);
+  const safeTranslateY = Number(rawTransform.translateY);
+  const safeGarageScale = Number(rawTransform.garageScale);
+
+  return {
+    scale: Number.isFinite(safeScale) ? safeScale : DEFAULT_VEHICLE_TRANSFORM.scale,
+    translateX: Number.isFinite(safeTranslateX) ? safeTranslateX : DEFAULT_VEHICLE_TRANSFORM.translateX,
+    translateY: Number.isFinite(safeTranslateY) ? safeTranslateY : DEFAULT_VEHICLE_TRANSFORM.translateY,
+    flipX: Boolean(rawTransform.flipX),
+    garageScale: Number.isFinite(safeGarageScale) ? safeGarageScale : DEFAULT_VEHICLE_TRANSFORM.garageScale,
+  };
+}
+
+function getVehicleTransform(variant) {
+  return {
+    ...DEFAULT_VEHICLE_TRANSFORM,
+    ...sanitizeVehicleTransform(vehicleTransforms[variant]),
+  };
+}
+
+async function loadVehicleTransforms() {
+  try {
+    const response = await fetch('./assets/vehicles/transforms.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const parsed = await response.json();
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Vehicle transform config must be an object map');
+    }
+
+    vehicleTransforms = Object.fromEntries(
+      Object.entries(parsed).map(([variant, transform]) => [variant, sanitizeVehicleTransform(transform)]),
+    );
+  } catch (error) {
+    console.warn('Failed to load vehicle transforms, using defaults.', error);
+    vehicleTransforms = {};
+  }
+}
+
 function applyVehiclePrefs(prefs) {
   const safePrefs = sanitizeVehiclePrefs(prefs);
   const unlocked = getUnlockedVehicleVariants();
   const activeVariant = unlocked.includes(safePrefs.variant) ? safePrefs.variant : unlocked[0];
+  const transform = getVehicleTransform(activeVariant);
+  const flipDirection = transform.flipX ? -1 : 1;
 
   vehicleSprite.style.setProperty('--vehicle-color', safePrefs.color);
   vehicleSprite.style.setProperty('--vehicle-mask-image', `url('${VEHICLE_ASSETS[activeVariant]}')`);
+  vehicleSprite.style.setProperty('--vehicle-scale', String(transform.scale));
+  vehicleSprite.style.setProperty('--vehicle-translate-x', `${transform.translateX}px`);
+  vehicleSprite.style.setProperty('--vehicle-translate-y', `${transform.translateY}px`);
+  vehicleSprite.style.setProperty('--vehicle-flip-x', String(flipDirection));
 
   if (vehicleColorInput.value.toLowerCase() !== safePrefs.color.toLowerCase()) {
     vehicleColorInput.value = safePrefs.color;
@@ -178,8 +233,15 @@ function createVehicleTile(variant, selectedVariant, color) {
 
   const icon = document.createElement('div');
   icon.className = 'garage-grid__icon';
+  const transform = getVehicleTransform(variant);
+  const iconScale = transform.garageScale ?? transform.scale;
+  const flipDirection = transform.flipX ? -1 : 1;
   icon.style.setProperty('--vehicle-icon-mask', `url('${VEHICLE_ASSETS[variant]}')`);
   icon.style.setProperty('--vehicle-color', color);
+  icon.style.setProperty('--vehicle-scale', String(iconScale));
+  icon.style.setProperty('--vehicle-translate-x', `${transform.translateX}px`);
+  icon.style.setProperty('--vehicle-translate-y', `${transform.translateY}px`);
+  icon.style.setProperty('--vehicle-flip-x', String(flipDirection));
   optionBtn.appendChild(icon);
 
   const name = document.createElement('span');
@@ -871,13 +933,17 @@ vehicleColorInput.addEventListener('input', () => {
   }
 });
 
-applyVehiclePrefs(DEFAULT_VEHICLE_PREFS);
+async function initializeApp() {
+  await loadVehicleTransforms();
+  applyVehiclePrefs(DEFAULT_VEHICLE_PREFS);
+  applyTranslations();
+  updateInstallButtonVisibility();
 
-applyTranslations();
-updateInstallButtonVisibility();
-
-if (activeUser) {
-  login(activeUser);
-} else {
-  setSessionVisibility(false);
+  if (activeUser) {
+    login(activeUser);
+  } else {
+    setSessionVisibility(false);
+  }
 }
+
+initializeApp();
