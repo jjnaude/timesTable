@@ -681,8 +681,74 @@ const SCORE_TO_WORLD_PIXELS = 50;
 const FAR_LAYER_PARALLAX_FACTOR = 0.35;
 const MID_LAYER_PARALLAX_FACTOR = 0.6;
 const NEAR_LAYER_PARALLAX_FACTOR = 1;
+const WORLD_OFFSET_SETTLE_DURATION_MS = 3000;
 
 let worldOffset = 0;
+let worldOffsetSpline = null;
+let worldOffsetAnimationFrameId = null;
+
+function buildCubicSplineSegment({
+  startTimeMs,
+  durationMs,
+  startPosition,
+  startVelocity,
+  endPosition,
+  endVelocity,
+}) {
+  const durationSeconds = durationMs / 1000;
+
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    return {
+      startTimeMs,
+      endTimeMs: startTimeMs,
+      durationSeconds: 0,
+      a: 0,
+      b: 0,
+      c: 0,
+      d: endPosition,
+      endPosition,
+      endVelocity,
+    };
+  }
+
+  const T = durationSeconds;
+  const deltaPosition = endPosition - startPosition;
+  const deltaVelocity = endVelocity - startVelocity;
+
+  const a = (deltaVelocity * T - 2 * (deltaPosition - startVelocity * T)) / (T ** 3);
+  const b = (deltaVelocity - 3 * a * (T ** 2)) / (2 * T);
+
+  return {
+    startTimeMs,
+    endTimeMs: startTimeMs + durationMs,
+    durationSeconds,
+    a,
+    b,
+    c: startVelocity,
+    d: startPosition,
+    endPosition,
+    endVelocity,
+  };
+}
+
+function evaluateSplineStateAt(spline, timeMs) {
+  if (!spline) {
+    return { position: worldOffset, velocity: 0 };
+  }
+
+  if (timeMs <= spline.startTimeMs) {
+    return { position: spline.d, velocity: spline.c };
+  }
+
+  if (timeMs >= spline.endTimeMs || spline.durationSeconds <= 0) {
+    return { position: spline.endPosition, velocity: spline.endVelocity };
+  }
+
+  const elapsedSeconds = (timeMs - spline.startTimeMs) / 1000;
+  const position = (((spline.a * elapsedSeconds) + spline.b) * elapsedSeconds + spline.c) * elapsedSeconds + spline.d;
+  const velocity = (3 * spline.a * (elapsedSeconds ** 2)) + (2 * spline.b * elapsedSeconds) + spline.c;
+  return { position, velocity };
+}
 
 function applyWorldOffset() {
   vehicleEnvironment.style.setProperty('--hills-offset-far-x', `${-worldOffset * FAR_LAYER_PARALLAX_FACTOR}px`);
@@ -690,14 +756,45 @@ function applyWorldOffset() {
   vehicleEnvironment.style.setProperty('--hills-offset-near-x', `${-worldOffset * NEAR_LAYER_PARALLAX_FACTOR}px`);
 }
 
-function updateWorldOffsetFromScore(scoreDelta) {
-  worldOffset += scoreDelta * SCORE_TO_WORLD_PIXELS;
+function updateWorldOffsetFromScore() {
+  const now = performance.now();
+  const { position, velocity } = evaluateSplineStateAt(worldOffsetSpline, now);
+  const targetPosition = score * SCORE_TO_WORLD_PIXELS;
+
+  worldOffsetSpline = buildCubicSplineSegment({
+    startTimeMs: now,
+    durationMs: WORLD_OFFSET_SETTLE_DURATION_MS,
+    startPosition: position,
+    startVelocity: velocity,
+    endPosition: targetPosition,
+    endVelocity: 0,
+  });
+
+  worldOffset = position;
   applyWorldOffset();
 }
 
 function resetWorldOffset() {
   worldOffset = 0;
+  worldOffsetSpline = null;
   applyWorldOffset();
+}
+
+function animateWorldOffset() {
+  const now = performance.now();
+  const { position } = evaluateSplineStateAt(worldOffsetSpline, now);
+
+  if (position !== worldOffset) {
+    worldOffset = position;
+    applyWorldOffset();
+  }
+
+  worldOffsetAnimationFrameId = window.requestAnimationFrame(animateWorldOffset);
+}
+
+function ensureWorldOffsetAnimationLoop() {
+  if (worldOffsetAnimationFrameId !== null) return;
+  worldOffsetAnimationFrameId = window.requestAnimationFrame(animateWorldOffset);
 }
 
 function updateVehicleRoadPosition() {
@@ -787,7 +884,7 @@ function checkAnswer() {
     score += 1;
     currentStreak += 1;
     scoreEl.textContent = String(score);
-    updateWorldOffsetFromScore(score - previousScore);
+    updateWorldOffsetFromScore();
     successSound();
 
     const streakHits = getAchievedMilestones(currentStreak, STREAK_MILESTONES, previousStreak);
@@ -808,7 +905,7 @@ function checkAnswer() {
     score -= 1;
     currentStreak = 0;
     scoreEl.textContent = String(score);
-    updateWorldOffsetFromScore(score - previousScore);
+    updateWorldOffsetFromScore();
     failSound();
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
     answerInput.value = '';
@@ -924,6 +1021,7 @@ function login(name) {
   closeGarage();
   setSessionVisibility(true);
   resetWorldOffset();
+  ensureWorldOffsetAnimationLoop();
 }
 
 function logout() {
@@ -1118,6 +1216,7 @@ async function initializeApp() {
   }
 
   resetWorldOffset();
+  ensureWorldOffsetAnimationLoop();
 }
 
 initializeApp();
