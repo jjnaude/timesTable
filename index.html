@@ -27,15 +27,33 @@
         </div>
       </section>
 
-      <section id="garage-panel" class="card hidden" aria-live="polite">
-        <div class="garage-panel__header">
-          <h2 data-i18n="title.garage">Garage</h2>
-          <button id="close-garage-btn" class="secondary garage-panel__close" type="button" data-i18n="button.closeGarage">Close garage</button>
+      <section id="garage-modal" class="garage-modal hidden" aria-hidden="true">
+        <div id="garage-backdrop" class="garage-modal__backdrop"></div>
+        <div
+          id="garage-dialog"
+          class="garage-modal__dialog card"
+          role="dialog"
+          aria-modal="true"
+          aria-live="polite"
+          aria-labelledby="garage-title"
+          tabindex="-1"
+        >
+          <div class="garage-panel__header">
+            <h2 id="garage-title" data-i18n="title.garage">Garage</h2>
+            <button
+              id="close-garage-btn"
+              class="secondary garage-panel__close"
+              type="button"
+              data-i18n="button.closeGarage"
+            >
+              Close garage
+            </button>
+          </div>
+          <p class="garage-panel__hint" data-i18n="hint.garageUnlock">Choose from your unlocked vehicles</p>
+          <div id="garage-grid" class="garage-grid" role="listbox" aria-label="Vehicle style"></div>
+          <label for="vehicle-color" data-i18n="label.vehicleColor">Vehicle colour</label>
+          <input id="vehicle-color" type="color" value="#2c7be5" aria-label="Vehicle colour" />
         </div>
-        <p class="garage-panel__hint" data-i18n="hint.garageUnlock">Choose from your unlocked vehicles</p>
-        <div id="garage-grid" class="garage-grid" role="listbox" aria-label="Vehicle style"></div>
-        <label for="vehicle-color" data-i18n="label.vehicleColor">Vehicle colour</label>
-        <input id="vehicle-color" type="color" value="#2c7be5" aria-label="Vehicle colour" />
       </section>
 
       <section id="update-banner" class="card update-banner hidden" aria-live="polite">

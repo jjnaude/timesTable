@@ -89,6 +89,35 @@ body {
   animation: vehicleDrive 360ms linear infinite;
 }
 
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.garage-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.garage-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 28, 51, 0.55);
+}
+
+.garage-modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  max-height: min(90vh, 700px);
+  overflow-y: auto;
+  margin: 0;
+}
+
 .garage-panel__header {
   display: flex;
   align-items: center;
@@ -471,6 +500,18 @@ li {
 
 
 @media (max-width: 560px) {
+
+  .garage-modal {
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  .garage-modal__dialog {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 12px 12px 10px 10px;
+  }
+
   .app {
     padding: 10px;
   }
