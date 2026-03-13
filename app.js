@@ -34,10 +34,23 @@ const logoutBtn = document.getElementById('logout-btn');
 const vehicleStage = document.getElementById('vehicle-stage');
 const vehicleSprite = document.getElementById('vehicle-sprite');
 const openGarageBtn = document.getElementById('open-garage-btn');
-const garagePanel = document.getElementById('garage-panel');
+const garageModal = document.getElementById('garage-modal');
+const garageDialog = document.getElementById('garage-dialog');
+const garageBackdrop = document.getElementById('garage-backdrop');
 const closeGarageBtn = document.getElementById('close-garage-btn');
 const garageGrid = document.getElementById('garage-grid');
 const vehicleColorInput = document.getElementById('vehicle-color');
+
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+let lastGarageFocus = null;
 
 const STORAGE_KEYS = {
   language: 'language',
@@ -108,6 +121,40 @@ const DEFAULT_VEHICLE_PREFS = {
 
 const VEHICLE_VARIANT_LIST = Object.keys(VEHICLE_ASSETS);
 const VEHICLE_VARIANTS = new Set(VEHICLE_VARIANT_LIST);
+const DEFAULT_VEHICLE_TRANSFORM = {
+  scale: 1,
+  translateX: 0,
+  translateY: 0,
+  flipX: false,
+  garageScale: null,
+};
+
+let vehicleTransforms = {};
+const VEHICLE_UNLOCK_SCORE_THRESHOLD = 20;
+const LOCK_ICON_ASSET = './assets/other/lock.svg';
+
+const VEHICLE_UNLOCK_RULES = VEHICLE_VARIANT_LIST.map((variant, index) => {
+  if (index === 0) {
+    return {
+      variant,
+      levelIndex: 0,
+      prerequisiteLevelIndex: null,
+      scoreThreshold: 0,
+    };
+  }
+
+  const levelIndex = Math.min(index, LEVEL_SEQUENCE.length - 1);
+  return {
+    variant,
+    levelIndex,
+    prerequisiteLevelIndex: levelIndex - 1,
+    scoreThreshold: VEHICLE_UNLOCK_SCORE_THRESHOLD,
+  };
+});
+
+const VEHICLE_UNLOCK_RULES_BY_VARIANT = Object.fromEntries(
+  VEHICLE_UNLOCK_RULES.map((rule) => [rule.variant, rule]),
+);
 
 function vehiclePrefsKey(name) {
   return `${STORAGE_KEYS.vehiclePrefsPrefix}${normalizeName(name)}`;
@@ -138,23 +185,93 @@ function saveVehiclePrefs(name, prefs) {
 }
 
 function getUnlockedVehicleVariants() {
-  if (!activeUser) return [DEFAULT_VEHICLE_PREFS.variant];
-  const unlockedLevelsCount = getUserProgress(activeUser).size;
-  const unlockCount = Math.max(1, Math.min(unlockedLevelsCount, VEHICLE_VARIANT_LIST.length));
-  return VEHICLE_VARIANT_LIST.slice(0, unlockCount);
+  return VEHICLE_VARIANT_LIST.filter((variant) => isVehicleUnlocked(variant));
 }
 
 function isVehicleUnlocked(variant) {
-  return getUnlockedVehicleVariants().includes(variant);
+  const rule = VEHICLE_UNLOCK_RULES_BY_VARIANT[variant];
+  if (!rule || rule.prerequisiteLevelIndex === null) return true;
+  if (!activeUser) return false;
+
+  const unlockedLevels = getUserProgress(activeUser);
+  const requiredLevel = LEVEL_SEQUENCE[rule.levelIndex];
+  if (!requiredLevel) return false;
+  return unlockedLevels.has(configKey(requiredLevel));
+}
+
+function getModeLabel(config) {
+  if (!config) return '';
+  return config.mode === 'single'
+    ? t('vehicle.unlockMode.single', { max: config.maxTable })
+    : t('vehicle.unlockMode.mixed', { max: config.maxTable });
+}
+
+function getVehicleUnlockText(variant) {
+  const rule = VEHICLE_UNLOCK_RULES_BY_VARIANT[variant];
+  if (!rule || rule.prerequisiteLevelIndex === null) {
+    return t('vehicle.unlockAlways');
+  }
+
+  const prerequisiteLevel = LEVEL_SEQUENCE[rule.prerequisiteLevelIndex];
+  return t('vehicle.unlockHint', {
+    score: rule.scoreThreshold,
+    modeLabel: getModeLabel(prerequisiteLevel),
+  });
+}
+
+function sanitizeVehicleTransform(rawTransform = {}) {
+  const safeScale = Number(rawTransform.scale);
+  const safeTranslateX = Number(rawTransform.translateX);
+  const safeTranslateY = Number(rawTransform.translateY);
+  const safeGarageScale = Number(rawTransform.garageScale);
+
+  return {
+    scale: Number.isFinite(safeScale) ? safeScale : DEFAULT_VEHICLE_TRANSFORM.scale,
+    translateX: Number.isFinite(safeTranslateX) ? safeTranslateX : DEFAULT_VEHICLE_TRANSFORM.translateX,
+    translateY: Number.isFinite(safeTranslateY) ? safeTranslateY : DEFAULT_VEHICLE_TRANSFORM.translateY,
+    flipX: Boolean(rawTransform.flipX),
+    garageScale: Number.isFinite(safeGarageScale) ? safeGarageScale : DEFAULT_VEHICLE_TRANSFORM.garageScale,
+  };
+}
+
+function getVehicleTransform(variant) {
+  return {
+    ...DEFAULT_VEHICLE_TRANSFORM,
+    ...sanitizeVehicleTransform(vehicleTransforms[variant]),
+  };
+}
+
+async function loadVehicleTransforms() {
+  try {
+    const response = await fetch('./assets/vehicles/transforms.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const parsed = await response.json();
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Vehicle transform config must be an object map');
+    }
+
+    vehicleTransforms = Object.fromEntries(
+      Object.entries(parsed).map(([variant, transform]) => [variant, sanitizeVehicleTransform(transform)]),
+    );
+  } catch (error) {
+    console.warn('Failed to load vehicle transforms, using defaults.', error);
+    vehicleTransforms = {};
+  }
 }
 
 function applyVehiclePrefs(prefs) {
   const safePrefs = sanitizeVehiclePrefs(prefs);
   const unlocked = getUnlockedVehicleVariants();
   const activeVariant = unlocked.includes(safePrefs.variant) ? safePrefs.variant : unlocked[0];
+  const transform = getVehicleTransform(activeVariant);
+  const flipDirection = transform.flipX ? -1 : 1;
 
   vehicleSprite.style.setProperty('--vehicle-color', safePrefs.color);
   vehicleSprite.style.setProperty('--vehicle-mask-image', `url('${VEHICLE_ASSETS[activeVariant]}')`);
+  vehicleSprite.style.setProperty('--vehicle-scale', String(transform.scale));
+  vehicleSprite.style.setProperty('--vehicle-translate-x', `${transform.translateX}px`);
+  vehicleSprite.style.setProperty('--vehicle-translate-y', `${transform.translateY}px`);
+  vehicleSprite.style.setProperty('--vehicle-flip-x', String(flipDirection));
 
   if (vehicleColorInput.value.toLowerCase() !== safePrefs.color.toLowerCase()) {
     vehicleColorInput.value = safePrefs.color;
@@ -173,13 +290,29 @@ function createVehicleTile(variant, selectedVariant, color) {
 
   const unlocked = isVehicleUnlocked(variant);
   optionBtn.classList.toggle('is-locked', !unlocked);
-  optionBtn.disabled = !unlocked;
+  optionBtn.setAttribute('aria-disabled', String(!unlocked));
   optionBtn.setAttribute('aria-selected', String(selectedVariant === variant));
+
+  const unlockHint = getVehicleUnlockText(variant);
+  if (!unlocked) {
+    optionBtn.title = unlockHint;
+    optionBtn.setAttribute('aria-label', `${t(`vehicle.${variant}`)} — ${unlockHint}`);
+  } else {
+    optionBtn.setAttribute('aria-label', t(`vehicle.${variant}`));
+  }
 
   const icon = document.createElement('div');
   icon.className = 'garage-grid__icon';
+  const transform = getVehicleTransform(variant);
+  const iconScale = transform.garageScale ?? transform.scale;
+  const flipDirection = transform.flipX ? -1 : 1;
   icon.style.setProperty('--vehicle-icon-mask', `url('${VEHICLE_ASSETS[variant]}')`);
+  icon.style.setProperty('--vehicle-icon-mask', `url('${unlocked ? VEHICLE_ASSETS[variant] : LOCK_ICON_ASSET}')`);
   icon.style.setProperty('--vehicle-color', color);
+  icon.style.setProperty('--vehicle-scale', String(iconScale));
+  icon.style.setProperty('--vehicle-translate-x', `${transform.translateX}px`);
+  icon.style.setProperty('--vehicle-translate-y', `${transform.translateY}px`);
+  icon.style.setProperty('--vehicle-flip-x', String(flipDirection));
   optionBtn.appendChild(icon);
 
   const name = document.createElement('span');
@@ -194,12 +327,15 @@ function createVehicleTile(variant, selectedVariant, color) {
     optionBtn.appendChild(lock);
   }
 
-  if (unlocked) {
-    optionBtn.addEventListener('click', () => {
-      const applied = applyVehiclePrefs({ variant, color: vehicleColorInput.value });
-      if (activeUser) saveVehiclePrefs(activeUser, applied);
-    });
-  }
+  optionBtn.addEventListener('click', () => {
+    if (!isVehicleUnlocked(variant)) {
+      window.alert(t('feedback.vehicleLockedClick', { hint: unlockHint }));
+      return;
+    }
+
+    const applied = applyVehiclePrefs({ variant, color: vehicleColorInput.value });
+    if (activeUser) saveVehiclePrefs(activeUser, applied);
+  });
 
   return optionBtn;
 }
@@ -211,15 +347,44 @@ function renderGarage(selectedVariant, color) {
   });
 }
 
+function getGarageFocusableElements() {
+  if (!garageDialog) return [];
+  return Array.from(garageDialog.querySelectorAll(FOCUSABLE_SELECTOR));
+}
+
+function isGarageOpen() {
+  return !garageModal.classList.contains('hidden');
+}
+
+function closeGarage({ restoreFocus = true } = {}) {
+  const wasOpen = isGarageOpen();
+  garageModal.classList.add('hidden');
+  garageModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+
+  if (!wasOpen || !restoreFocus) return;
+
+  if (openGarageBtn && !openGarageBtn.disabled) {
+    openGarageBtn.focus();
+  } else if (lastGarageFocus instanceof HTMLElement && document.contains(lastGarageFocus)) {
+    lastGarageFocus.focus();
+  }
+}
+
 function openGarage() {
   if (!activeUser) return;
-  garagePanel.classList.remove('hidden');
-}
+  lastGarageFocus = document.activeElement;
+  garageModal.classList.remove('hidden');
+  garageModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
 
-function closeGarage() {
-  garagePanel.classList.add('hidden');
+  const focusable = getGarageFocusableElements();
+  if (focusable.length) {
+    focusable[0].focus();
+  } else {
+    garageDialog.focus();
+  }
 }
-
 
 function getUserProgress(name) {
   const normalized = normalizeName(name);
@@ -368,7 +533,7 @@ function setSessionVisibility(loggedIn) {
   setupScreen.classList.toggle('hidden', !loggedIn);
   vehicleStage.classList.toggle('hidden', !loggedIn);
   if (!loggedIn) {
-    garagePanel.classList.add('hidden');
+    closeGarage({ restoreFocus: false });
   }
   if (!loggedIn) {
     [countdownScreen, gameScreen, resultScreen].forEach((el) => el.classList.add('hidden'));
@@ -386,6 +551,8 @@ function applyTranslations() {
   languageSelect.setAttribute('aria-label', t('aria.language'));
   loginNameInput.setAttribute('aria-label', t('aria.loginName'));
   openGarageBtn.setAttribute('aria-label', t('aria.openGarage'));
+  closeGarageBtn.setAttribute('aria-label', t('aria.closeGarage'));
+  garageDialog.setAttribute('aria-label', t('aria.garageDialog'));
   garageGrid.setAttribute('aria-label', t('aria.vehicleVariant'));
   vehicleColorInput.setAttribute('aria-label', t('aria.vehicleColor'));
 
@@ -738,6 +905,8 @@ function startGameRound() {
 
 function startCountdownThenGame() {
   showOnly(countdownScreen);
+  countdownEl.textContent = '3';
+  beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
 
   const countdownSteps = [
     { label: '3', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
@@ -839,11 +1008,32 @@ loginNameInput.addEventListener('keydown', (event) => {
 
 logoutBtn.addEventListener('click', logout);
 openGarageBtn.addEventListener('click', openGarage);
-closeGarageBtn.addEventListener('click', closeGarage);
+closeGarageBtn.addEventListener('click', () => closeGarage());
+garageBackdrop.addEventListener('click', () => closeGarage());
 
 document.addEventListener('keydown', (event) => {
+  if (!isGarageOpen()) return;
+
   if (event.key === 'Escape') {
+    event.preventDefault();
     closeGarage();
+    return;
+  }
+
+  if (event.key !== 'Tab') return;
+
+  const focusable = getGarageFocusableElements();
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 });
 
@@ -874,13 +1064,17 @@ vehicleColorInput.addEventListener('input', () => {
   }
 });
 
-applyVehiclePrefs(DEFAULT_VEHICLE_PREFS);
+async function initializeApp() {
+  await loadVehicleTransforms();
+  applyVehiclePrefs(DEFAULT_VEHICLE_PREFS);
+  applyTranslations();
+  updateInstallButtonVisibility();
 
-applyTranslations();
-updateInstallButtonVisibility();
-
-if (activeUser) {
-  login(activeUser);
-} else {
-  setSessionVisibility(false);
+  if (activeUser) {
+    login(activeUser);
+  } else {
+    setSessionVisibility(false);
+  }
 }
+
+initializeApp();
