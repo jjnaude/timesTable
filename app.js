@@ -740,6 +740,7 @@ function startCountdownThenGame() {
   let count = 3;
   showOnly(countdownScreen);
   countdownEl.textContent = '3';
+  beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
 
   const interval = setInterval(() => {
     count -= 1;
