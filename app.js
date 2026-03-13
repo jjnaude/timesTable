@@ -890,6 +890,7 @@ function login(name) {
   saveVehiclePrefs(activeUser, appliedPrefs);
   closeGarage();
   setSessionVisibility(true);
+  updateVehicleRoadPosition();
 }
 
 function logout() {
@@ -897,11 +898,16 @@ function logout() {
   vehicleSprite.classList.remove('is-driving');
   vehicleEnvironment.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
+  updateVehicleRoadPosition(0);
   closeGarage();
   setSessionVisibility(false);
   loginNameInput.value = '';
   loginNameInput.focus();
 }
+
+window.addEventListener('resize', () => {
+  updateVehicleRoadPosition();
+});
 
 startBtn.addEventListener('click', () => {
   gameConfig = {
@@ -1077,6 +1083,8 @@ async function initializeApp() {
   } else {
     setSessionVisibility(false);
   }
+
+  updateVehicleRoadPosition(0);
 }
 
 initializeApp();

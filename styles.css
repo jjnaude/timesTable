@@ -119,6 +119,7 @@ body {
 }
 
 .vehicle-stage__open {
+  --vehicle-road-progress-x: 0px;
   position: relative;
   z-index: 2;
   display: grid;
@@ -128,6 +129,7 @@ body {
   padding: 4px;
   border: 0;
   background: transparent;
+  transform: translateX(var(--vehicle-road-progress-x));
 }
 
 .vehicle-stage__open:focus-visible {
