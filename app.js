@@ -305,14 +305,10 @@ function createVehicleTile(variant, selectedVariant, color) {
   icon.className = 'garage-grid__icon';
   const transform = getVehicleTransform(variant);
   const iconScale = transform.garageScale ?? transform.scale;
-  const flipDirection = transform.flipX ? -1 : 1;
   icon.style.setProperty('--vehicle-icon-mask', `url('${VEHICLE_ASSETS[variant]}')`);
   icon.style.setProperty('--vehicle-icon-mask', `url('${unlocked ? VEHICLE_ASSETS[variant] : LOCK_ICON_ASSET}')`);
   icon.style.setProperty('--vehicle-color', color);
   icon.style.setProperty('--vehicle-scale', String(iconScale));
-  icon.style.setProperty('--vehicle-translate-x', `${transform.translateX}px`);
-  icon.style.setProperty('--vehicle-translate-y', `${transform.translateY}px`);
-  icon.style.setProperty('--vehicle-flip-x', String(flipDirection));
   optionBtn.appendChild(icon);
 
   const name = document.createElement('span');
