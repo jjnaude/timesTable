@@ -699,6 +699,28 @@ let consecutiveCorrect = 0;
 const MAX_FUEL = 5;
 const TURBO_CORRECT_WINDOW = 3;
 const TURBO_BONUS = 1;
+const SCORE_TO_WORLD_PIXELS = 8;
+const FAR_LAYER_PARALLAX_FACTOR = 0.35;
+const MID_LAYER_PARALLAX_FACTOR = 0.6;
+const NEAR_LAYER_PARALLAX_FACTOR = 1;
+
+let worldOffset = 0;
+
+function applyWorldOffset() {
+  vehicleEnvironment.style.setProperty('--hills-offset-far-x', `${worldOffset * FAR_LAYER_PARALLAX_FACTOR}px`);
+  vehicleEnvironment.style.setProperty('--hills-offset-mid-x', `${worldOffset * MID_LAYER_PARALLAX_FACTOR}px`);
+  vehicleEnvironment.style.setProperty('--hills-offset-near-x', `${worldOffset * NEAR_LAYER_PARALLAX_FACTOR}px`);
+}
+
+function updateWorldOffsetFromScore(scoreDelta) {
+  worldOffset += scoreDelta * SCORE_TO_WORLD_PIXELS;
+  applyWorldOffset();
+}
+
+function resetWorldOffset() {
+  worldOffset = 0;
+  applyWorldOffset();
+}
 
 
 function updateFuelUi() {
@@ -795,6 +817,7 @@ function checkAnswer() {
     }
 
     scoreEl.textContent = String(score);
+    updateWorldOffsetFromScore(score - previousScore);
     updateFuelUi();
     successSound();
 
@@ -818,6 +841,7 @@ function checkAnswer() {
     score -= 1;
     currentStreak = 0;
     scoreEl.textContent = String(score);
+    updateWorldOffsetFromScore(score - previousScore);
     updateFuelUi();
     failSound();
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
@@ -886,6 +910,7 @@ function startGameRound() {
   lastQuestionKey = null;
   currentStreak = 0;
   setFeedbackMessage(gameFeedbackEl);
+  resetWorldOffset();
   updateFuelUi();
 
   showOnly(gameScreen);
@@ -941,6 +966,7 @@ function login(name) {
   saveVehiclePrefs(activeUser, appliedPrefs);
   closeGarage();
   setSessionVisibility(true);
+  resetWorldOffset();
 }
 
 function logout() {
@@ -948,6 +974,7 @@ function logout() {
   vehicleSprite.classList.remove('is-driving');
   vehicleEnvironment.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
+  resetWorldOffset();
   closeGarage();
   setSessionVisibility(false);
   loginNameInput.value = '';
@@ -1075,6 +1102,8 @@ async function initializeApp() {
   } else {
     setSessionVisibility(false);
   }
+
+  resetWorldOffset();
 }
 
 initializeApp();
