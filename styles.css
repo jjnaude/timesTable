@@ -42,6 +42,9 @@ body {
   --hill-far-speed: 34s;
   --hill-mid-speed: 22s;
   --hill-near-speed: 14s;
+  --hills-offset-far-x: 0px;
+  --hills-offset-mid-x: 0px;
+  --hills-offset-near-x: 0px;
   width: 100%;
   min-height: 148px;
   border-radius: 12px;
@@ -71,13 +74,14 @@ body {
   position: absolute;
   left: calc(-1 * var(--hill-tile-width));
   width: calc(var(--hill-tile-width) * 3);
-  background-position: 0 0;
+  background-position: var(--hills-offset-x, 0px) 0;
   background-repeat: repeat-x;
   background-size: var(--hill-tile-width) 100%;
   transform: translateX(0);
 }
 
 .vehicle-stage__hills--far {
+  --hills-offset-x: var(--hills-offset-far-x);
   bottom: 42px;
   height: 62px;
   opacity: 0.95;
@@ -85,27 +89,17 @@ body {
 }
 
 .vehicle-stage__hills--mid {
+  --hills-offset-x: var(--hills-offset-mid-x);
   bottom: 28px;
   height: 72px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 72' preserveAspectRatio='none'%3E%3Cpath fill='%23bdddb6' d='M0 54 C58 34 114 25 172 50 C232 72 292 67 349 45 C402 25 458 28 511 48 C522 52 531 53 540 50 L540 72 L0 72 Z'/%3E%3C/svg%3E");
 }
 
 .vehicle-stage__hills--near {
+  --hills-offset-x: var(--hills-offset-near-x);
   bottom: 20px;
   height: 82px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 82' preserveAspectRatio='none'%3E%3Cpath fill='%23a8cf9e' d='M0 61 C62 48 120 35 178 58 C233 81 293 80 351 61 C408 41 467 42 525 56 C530 57 535 57 540 56 L540 82 L0 82 Z'/%3E%3C/svg%3E");
-}
-
-.vehicle-stage__environment.is-driving .vehicle-stage__hills--far {
-  animation: hillsScroll var(--hill-far-speed) linear infinite;
-}
-
-.vehicle-stage__environment.is-driving .vehicle-stage__hills--mid {
-  animation: hillsScroll var(--hill-mid-speed) linear infinite;
-}
-
-.vehicle-stage__environment.is-driving .vehicle-stage__hills--near {
-  animation: hillsScroll var(--hill-near-speed) linear infinite;
 }
 
 .vehicle-stage__road {
@@ -164,17 +158,6 @@ body {
 .vehicle-stage__sprite.is-driving {
   animation: vehicleDrive 360ms linear infinite;
 }
-
-@keyframes hillsScroll {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(calc(-1 * var(--hill-tile-width)));
-  }
-}
-
 
 body.modal-open {
   overflow: hidden;

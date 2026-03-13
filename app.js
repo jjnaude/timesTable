@@ -753,6 +753,7 @@ function checkAnswer() {
     score += 1;
     currentStreak += 1;
     scoreEl.textContent = String(score);
+    updateWorldOffsetFromScore(score - previousScore);
     successSound();
 
     const streakHits = getAchievedMilestones(currentStreak, STREAK_MILESTONES, previousStreak);
@@ -773,6 +774,7 @@ function checkAnswer() {
     score -= 1;
     currentStreak = 0;
     scoreEl.textContent = String(score);
+    updateWorldOffsetFromScore(score - previousScore);
     failSound();
     setFeedbackMessage(gameFeedbackEl, t('feedback.tryAgain'), 'unlock');
     answerInput.value = '';
@@ -836,6 +838,7 @@ function startGameRound() {
   lastQuestionKey = null;
   currentStreak = 0;
   setFeedbackMessage(gameFeedbackEl);
+  resetWorldOffset();
 
   showOnly(gameScreen);
   vehicleSprite.classList.add('is-driving');
@@ -890,7 +893,7 @@ function login(name) {
   saveVehiclePrefs(activeUser, appliedPrefs);
   closeGarage();
   setSessionVisibility(true);
-  updateVehicleRoadPosition();
+  resetWorldOffset();
 }
 
 function logout() {
@@ -898,7 +901,7 @@ function logout() {
   vehicleSprite.classList.remove('is-driving');
   vehicleEnvironment.classList.remove('is-driving');
   localStorage.removeItem(STORAGE_KEYS.activeUser);
-  updateVehicleRoadPosition(0);
+  resetWorldOffset();
   closeGarage();
   setSessionVisibility(false);
   loginNameInput.value = '';
@@ -1084,7 +1087,7 @@ async function initializeApp() {
     setSessionVisibility(false);
   }
 
-  updateVehicleRoadPosition(0);
+  resetWorldOffset();
 }
 
 initializeApp();
