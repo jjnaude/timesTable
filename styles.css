@@ -38,11 +38,15 @@ body {
 }
 
 .vehicle-stage__environment {
+  --hill-tile-width: 540px;
+  --hill-far-speed: 34s;
+  --hill-mid-speed: 22s;
+  --hill-near-speed: 14s;
   width: 100%;
   min-height: 148px;
   border-radius: 12px;
   border: 1px solid #d7e4f4;
-  background: #d8ebff url('./assets/stage/environment-day.svg') center/cover no-repeat;
+  background: linear-gradient(180deg, #cfe8ff 0%, #eaf4ff 65%, #f4f9ff 100%);
   box-shadow: inset 0 -12px 0 rgba(147, 183, 225, 0.24);
   position: relative;
   overflow: hidden;
@@ -52,7 +56,71 @@ body {
   padding: 16px;
 }
 
+.vehicle-stage__sun {
+  position: absolute;
+  top: 18px;
+  right: 30px;
+  width: 54px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #ffe37a;
+  box-shadow: 0 0 0 12px rgba(255, 227, 122, 0.2);
+}
+
+.vehicle-stage__hills {
+  position: absolute;
+  left: calc(-1 * var(--hill-tile-width));
+  width: calc(var(--hill-tile-width) * 3);
+  background-position: 0 0;
+  background-repeat: repeat-x;
+  background-size: var(--hill-tile-width) 100%;
+  transform: translateX(0);
+}
+
+.vehicle-stage__hills--far {
+  bottom: 42px;
+  height: 62px;
+  opacity: 0.95;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 62' preserveAspectRatio='none'%3E%3Cpath fill='%23cfe6c8' d='M0 49 C54 20 106 15 160 40 C213 62 266 58 322 36 C374 15 428 18 482 40 C502 48 521 49 540 44 L540 62 L0 62 Z'/%3E%3C/svg%3E");
+}
+
+.vehicle-stage__hills--mid {
+  bottom: 28px;
+  height: 72px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 72' preserveAspectRatio='none'%3E%3Cpath fill='%23bdddb6' d='M0 54 C58 34 114 25 172 50 C232 72 292 67 349 45 C402 25 458 28 511 48 C522 52 531 53 540 50 L540 72 L0 72 Z'/%3E%3C/svg%3E");
+}
+
+.vehicle-stage__hills--near {
+  bottom: 20px;
+  height: 82px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 82' preserveAspectRatio='none'%3E%3Cpath fill='%23a8cf9e' d='M0 61 C62 48 120 35 178 58 C233 81 293 80 351 61 C408 41 467 42 525 56 C530 57 535 57 540 56 L540 82 L0 82 Z'/%3E%3C/svg%3E");
+}
+
+.vehicle-stage__environment.is-driving .vehicle-stage__hills--far {
+  animation: hillsScroll var(--hill-far-speed) linear infinite;
+}
+
+.vehicle-stage__environment.is-driving .vehicle-stage__hills--mid {
+  animation: hillsScroll var(--hill-mid-speed) linear infinite;
+}
+
+.vehicle-stage__environment.is-driving .vehicle-stage__hills--near {
+  animation: hillsScroll var(--hill-near-speed) linear infinite;
+}
+
+.vehicle-stage__road {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46px;
+  background: linear-gradient(180deg, #dce8f7, #c6d8f0);
+  box-shadow: inset 0 10px 0 rgba(255, 255, 255, 0.2);
+}
+
 .vehicle-stage__open {
+  position: relative;
+  z-index: 2;
   display: grid;
   place-items: center;
   width: auto;
@@ -93,6 +161,16 @@ body {
 
 .vehicle-stage__sprite.is-driving {
   animation: vehicleDrive 360ms linear infinite;
+}
+
+@keyframes hillsScroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-1 * var(--hill-tile-width)));
+  }
 }
 
 
