@@ -904,23 +904,27 @@ function startGameRound() {
 }
 
 function startCountdownThenGame() {
-  let count = 3;
   showOnly(countdownScreen);
   countdownEl.textContent = '3';
   beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
 
-  const interval = setInterval(() => {
-    count -= 1;
-    if (count > 0) {
-      countdownEl.textContent = String(count);
-      beep({ frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 });
-    } else {
-      countdownEl.textContent = t('countdown.go');
-      beep({ frequency: 980, duration: 0.18, type: 'triangle', volume: 0.08 });
-      clearInterval(interval);
-      setTimeout(startGameRound, 600);
-    }
-  }, 1000);
+  const countdownSteps = [
+    { label: '3', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
+    { label: '2', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
+    { label: '1', frequency: 480, duration: 0.08, type: 'triangle', volume: 0.06 },
+    { label: t('countdown.go'), frequency: 980, duration: 0.18, type: 'triangle', volume: 0.08 },
+  ];
+
+  countdownSteps.forEach((step, index) => {
+    setTimeout(() => {
+      countdownEl.textContent = step.label;
+      beep(step);
+
+      if (index === countdownSteps.length - 1) {
+        setTimeout(startGameRound, 600);
+      }
+    }, index * 1000);
+  });
 }
 
 function login(name) {
