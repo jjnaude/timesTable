@@ -108,6 +108,31 @@ const DEFAULT_VEHICLE_PREFS = {
 
 const VEHICLE_VARIANT_LIST = Object.keys(VEHICLE_ASSETS);
 const VEHICLE_VARIANTS = new Set(VEHICLE_VARIANT_LIST);
+const VEHICLE_UNLOCK_SCORE_THRESHOLD = 20;
+const LOCK_ICON_ASSET = './assets/other/lock.svg';
+
+const VEHICLE_UNLOCK_RULES = VEHICLE_VARIANT_LIST.map((variant, index) => {
+  if (index === 0) {
+    return {
+      variant,
+      levelIndex: 0,
+      prerequisiteLevelIndex: null,
+      scoreThreshold: 0,
+    };
+  }
+
+  const levelIndex = Math.min(index, LEVEL_SEQUENCE.length - 1);
+  return {
+    variant,
+    levelIndex,
+    prerequisiteLevelIndex: levelIndex - 1,
+    scoreThreshold: VEHICLE_UNLOCK_SCORE_THRESHOLD,
+  };
+});
+
+const VEHICLE_UNLOCK_RULES_BY_VARIANT = Object.fromEntries(
+  VEHICLE_UNLOCK_RULES.map((rule) => [rule.variant, rule]),
+);
 
 function vehiclePrefsKey(name) {
   return `${STORAGE_KEYS.vehiclePrefsPrefix}${normalizeName(name)}`;
@@ -138,14 +163,38 @@ function saveVehiclePrefs(name, prefs) {
 }
 
 function getUnlockedVehicleVariants() {
-  if (!activeUser) return [DEFAULT_VEHICLE_PREFS.variant];
-  const unlockedLevelsCount = getUserProgress(activeUser).size;
-  const unlockCount = Math.max(1, Math.min(unlockedLevelsCount, VEHICLE_VARIANT_LIST.length));
-  return VEHICLE_VARIANT_LIST.slice(0, unlockCount);
+  return VEHICLE_VARIANT_LIST.filter((variant) => isVehicleUnlocked(variant));
 }
 
 function isVehicleUnlocked(variant) {
-  return getUnlockedVehicleVariants().includes(variant);
+  const rule = VEHICLE_UNLOCK_RULES_BY_VARIANT[variant];
+  if (!rule || rule.prerequisiteLevelIndex === null) return true;
+  if (!activeUser) return false;
+
+  const unlockedLevels = getUserProgress(activeUser);
+  const requiredLevel = LEVEL_SEQUENCE[rule.levelIndex];
+  if (!requiredLevel) return false;
+  return unlockedLevels.has(configKey(requiredLevel));
+}
+
+function getModeLabel(config) {
+  if (!config) return '';
+  return config.mode === 'single'
+    ? t('vehicle.unlockMode.single', { max: config.maxTable })
+    : t('vehicle.unlockMode.mixed', { max: config.maxTable });
+}
+
+function getVehicleUnlockText(variant) {
+  const rule = VEHICLE_UNLOCK_RULES_BY_VARIANT[variant];
+  if (!rule || rule.prerequisiteLevelIndex === null) {
+    return t('vehicle.unlockAlways');
+  }
+
+  const prerequisiteLevel = LEVEL_SEQUENCE[rule.prerequisiteLevelIndex];
+  return t('vehicle.unlockHint', {
+    score: rule.scoreThreshold,
+    modeLabel: getModeLabel(prerequisiteLevel),
+  });
 }
 
 function applyVehiclePrefs(prefs) {
@@ -173,12 +222,20 @@ function createVehicleTile(variant, selectedVariant, color) {
 
   const unlocked = isVehicleUnlocked(variant);
   optionBtn.classList.toggle('is-locked', !unlocked);
-  optionBtn.disabled = !unlocked;
+  optionBtn.setAttribute('aria-disabled', String(!unlocked));
   optionBtn.setAttribute('aria-selected', String(selectedVariant === variant));
+
+  const unlockHint = getVehicleUnlockText(variant);
+  if (!unlocked) {
+    optionBtn.title = unlockHint;
+    optionBtn.setAttribute('aria-label', `${t(`vehicle.${variant}`)} — ${unlockHint}`);
+  } else {
+    optionBtn.setAttribute('aria-label', t(`vehicle.${variant}`));
+  }
 
   const icon = document.createElement('div');
   icon.className = 'garage-grid__icon';
-  icon.style.setProperty('--vehicle-icon-mask', `url('${VEHICLE_ASSETS[variant]}')`);
+  icon.style.setProperty('--vehicle-icon-mask', `url('${unlocked ? VEHICLE_ASSETS[variant] : LOCK_ICON_ASSET}')`);
   icon.style.setProperty('--vehicle-color', color);
   optionBtn.appendChild(icon);
 
@@ -194,12 +251,15 @@ function createVehicleTile(variant, selectedVariant, color) {
     optionBtn.appendChild(lock);
   }
 
-  if (unlocked) {
-    optionBtn.addEventListener('click', () => {
-      const applied = applyVehiclePrefs({ variant, color: vehicleColorInput.value });
-      if (activeUser) saveVehiclePrefs(activeUser, applied);
-    });
-  }
+  optionBtn.addEventListener('click', () => {
+    if (!isVehicleUnlocked(variant)) {
+      window.alert(t('feedback.vehicleLockedClick', { hint: unlockHint }));
+      return;
+    }
+
+    const applied = applyVehiclePrefs({ variant, color: vehicleColorInput.value });
+    if (activeUser) saveVehiclePrefs(activeUser, applied);
+  });
 
   return optionBtn;
 }
