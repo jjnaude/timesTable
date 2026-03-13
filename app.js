@@ -808,7 +808,9 @@ function sanitizeBackgroundObject(rawObject = {}) {
     asset: String(rawObject.asset || ''),
     translateY: Number.isFinite(translateY) ? translateY : DEFAULT_BACKGROUND_OBJECT.translateY,
     scale: Number.isFinite(scale) ? scale : DEFAULT_BACKGROUND_OBJECT.scale,
-    frequency: Number.isFinite(frequency) && frequency > 0 ? frequency : DEFAULT_BACKGROUND_OBJECT.frequency,
+    frequency: Number.isFinite(frequency) && (frequency > 0 || frequency === -1)
+      ? frequency
+      : DEFAULT_BACKGROUND_OBJECT.frequency,
     levels,
   };
 }
@@ -824,7 +826,7 @@ async function loadBackgroundObjectConfig() {
 
     backgroundObjectConfig = parsed
       .map((item) => sanitizeBackgroundObject(item))
-      .filter((item) => item.id && item.asset && item.frequency > 0 && item.levels.length > 0);
+      .filter((item) => item.id && item.asset && (item.frequency > 0 || item.frequency === -1) && item.levels.length > 0);
   } catch (error) {
     console.warn('Failed to load background objects config, using no foreground objects.', error);
     backgroundObjectConfig = [];
@@ -834,11 +836,40 @@ async function loadBackgroundObjectConfig() {
 function resetForegroundPlacements() {
   const seed = `${configKey(gameConfig)}-max:${gameConfig.maxTable}`;
   const eligibleObjects = backgroundObjectConfig.filter((item) => item.levels.includes(gameConfig.maxTable));
+  const leaderboardEntries = getLeaderboard(gameConfig);
+  const milestoneFlagObjects = eligibleObjects.filter((item) => item.frequency === -1);
+  const staticPlacements = [];
+
+  milestoneFlagObjects.forEach((item) => {
+    staticPlacements.push({
+      worldX: 0,
+      translateY: item.translateY,
+      scale: item.scale,
+      asset: item.asset,
+      alignWithVehicle: true,
+    });
+
+    leaderboardEntries.slice(0, 5).forEach((row) => {
+      const rowScore = Number(row.score);
+      if (!Number.isFinite(rowScore) || rowScore <= 0) return;
+      const vehicleColor = /^#[0-9a-f]{6}$/i.test(row.color || '') ? row.color : null;
+
+      staticPlacements.push({
+        worldX: rowScore * SCORE_TO_WORLD_PIXELS * NEAREST_LAYER_PARALLAX_FACTOR,
+        translateY: item.translateY,
+        scale: item.scale,
+        asset: item.asset,
+        color: vehicleColor,
+        alignWithVehicle: true,
+      });
+    });
+  });
+
   backgroundPlacementState = {
     rng: createSeededRng(seed),
     generatedUnit: 0,
-    placements: [],
-    eligibleObjects,
+    placements: staticPlacements,
+    eligibleObjects: eligibleObjects.filter((item) => item.frequency > 0),
   };
   renderForegroundBackgroundLayer();
 }
@@ -885,8 +916,13 @@ function renderForegroundBackgroundLayer() {
 
   vehicleForegroundLayer.innerHTML = visible
     .map((placement) => {
-      const left = placement.worldX - layerOffset;
-      return `<div class="vehicle-stage__foreground-object" style="left:${left}px;background-image:url('${placement.asset}');transform:translate(-50%, ${placement.translateY}px) scale(${placement.scale});"></div>`;
+      const centerOffset = placement.alignWithVehicle ? width / 2 : 0;
+      const left = placement.worldX - layerOffset + centerOffset;
+      const tinted = /^#[0-9a-f]{6}$/i.test(placement.color || '');
+      const spriteStyle = tinted
+        ? `left:${left}px;background-color:${placement.color};-webkit-mask-image:url('${placement.asset}');mask-image:url('${placement.asset}');transform:translate(-50%, ${placement.translateY}px) scale(${placement.scale});`
+        : `left:${left}px;background-image:url('${placement.asset}');transform:translate(-50%, ${placement.translateY}px) scale(${placement.scale});`;
+      return `<div class="vehicle-stage__foreground-object${tinted ? ' is-tinted' : ''}" style="${spriteStyle}"></div>`;
     })
     .join('');
 }
@@ -1074,7 +1110,7 @@ function finishGame() {
   const board = getLeaderboard(gameConfig);
   const qualifies = board.length < 5 || score > board[board.length - 1].score;
   if (qualifies) {
-    board.push({ name: activeUser, score });
+    board.push({ name: activeUser, score, color: getVehiclePrefs(activeUser).color });
     board.sort((a, b) => b.score - a.score);
     saveLeaderboard(gameConfig, board);
     celebrationEl.classList.remove('hidden');
