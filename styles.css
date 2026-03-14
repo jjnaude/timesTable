@@ -520,6 +520,11 @@ li {
 }
 
 
+body.sprint-active #session-screen {
+  display: none;
+}
+
+
 
 .feedback {
   margin-top: 10px;
@@ -606,14 +611,6 @@ li {
 
 
 @media (max-width: 560px) {
-  body.sprint-active #session-screen {
-    display: none;
-  }
-
-  body.sprint-active .app {
-    padding-top: 8px;
-  }
-
   .garage-modal {
     align-items: flex-end;
     padding: 10px;
