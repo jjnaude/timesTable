@@ -3,15 +3,9 @@
     "id": "sheep",
     "asset": "./assets/background/sheep-svgrepo-com.svg",
     "translateY": 18,
-    "scale": 1,
+    "scale": 0.5,
     "frequency": 0.013,
-    "levels": [
-      2,
-      3,
-      4,
-      5,
-      6
-    ]
+    "levels": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   },
   {
     "id": "cow",
@@ -19,37 +13,15 @@
     "translateY": 15,
     "scale": 1,
     "frequency": 0.013,
-    "levels": [
-      2,
-      3,
-      4,
-      5,
-      6,
-      5,
-      6,
-      7,
-      8,
-      9
-    ]
+    "levels": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   },
   {
     "id": "cactus",
     "asset": "./assets/background/cactus-svgrepo-com.svg",
     "translateY": 14,
     "scale": 1,
-    "frequency": 0.2,
-    "levels": [
-      2,
-      3,
-      4,
-      5,
-      6,
-      8,
-      9,
-      10,
-      11,
-      12
-    ]
+    "frequency": 0.1,
+    "levels": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   },
   {
     "id": "leaderboardFlag",
@@ -57,18 +29,6 @@
     "translateY": 12,
     "scale": 1,
     "frequency": -1,
-    "levels": [
-      2,
-      3,
-      4,
-      5,
-      6,
-      7,
-      8,
-      9,
-      10,
-      11,
-      12
-    ]
+    "levels": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   }
 ]
