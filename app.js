@@ -97,6 +97,11 @@ function configKey(config) {
   return `${config.mode}-${config.maxTable}`;
 }
 
+function leaderboardConfigKey(config) {
+  const operation = config.operation || 'multiply';
+  return `${operation}-${configKey(config)}`;
+}
+
 
 const VEHICLE_ASSETS = {
   bicycle: './assets/vehicles/bicycle.svg',
@@ -424,7 +429,25 @@ function unlockNextLevelForScore(config, currentScore) {
 }
 
 function getLeaderboard(config) {
-  const raw = localStorage.getItem(`leaderboard:${configKey(config)}`);
+  const scopedKey = `leaderboard:${leaderboardConfigKey(config)}`;
+  const raw = localStorage.getItem(scopedKey);
+
+  if (!raw && (config.operation || 'multiply') === 'multiply') {
+    const legacyRaw = localStorage.getItem(`leaderboard:${configKey(config)}`);
+    if (legacyRaw) {
+      try {
+        const legacyParsed = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyParsed)) {
+          localStorage.setItem(scopedKey, legacyRaw);
+          localStorage.removeItem(`leaderboard:${configKey(config)}`);
+          return legacyParsed;
+        }
+      } catch {
+        return [];
+      }
+    }
+  }
+
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -435,7 +458,7 @@ function getLeaderboard(config) {
 }
 
 function saveLeaderboard(config, entries) {
-  localStorage.setItem(`leaderboard:${configKey(config)}`, JSON.stringify(entries.slice(0, 5)));
+  localStorage.setItem(`leaderboard:${leaderboardConfigKey(config)}`, JSON.stringify(entries.slice(0, 5)));
 }
 
 function settingLabel(config) {
