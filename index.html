@@ -11,10 +11,30 @@
   </head>
   <body>
     <main class="app">
-      <div class="language-picker">
-        <label for="language-select" data-i18n="label.language">Language</label>
-        <select id="language-select" aria-label="Language"></select>
+      <div class="app-toolbar">
+        <button id="open-language-btn" class="language-trigger" type="button" aria-label="Open language menu">🌍</button>
       </div>
+
+      <section id="language-modal" class="garage-modal hidden" aria-hidden="true">
+        <div id="language-backdrop" class="garage-modal__backdrop"></div>
+        <div
+          id="language-dialog"
+          class="garage-modal__dialog card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="language-title"
+          tabindex="-1"
+        >
+          <div class="garage-panel__header">
+            <h2 id="language-title" data-i18n="title.languageModal">Choose language</h2>
+            <button id="close-language-btn" class="secondary garage-panel__close" type="button" data-i18n="button.closeLanguage">
+              Close
+            </button>
+          </div>
+          <label for="language-select" data-i18n="label.language">Language</label>
+          <select id="language-select" aria-label="Language"></select>
+        </div>
+      </section>
 
       <h1 data-i18n="title.app">Times Table Sprint</h1>
       <button id="install-btn" class="secondary hidden" type="button">Install app</button>

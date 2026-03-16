@@ -1,5 +1,10 @@
 const maxTableSelect = document.getElementById('max-table');
 const languageSelect = document.getElementById('language-select');
+const openLanguageBtn = document.getElementById('open-language-btn');
+const languageModal = document.getElementById('language-modal');
+const languageDialog = document.getElementById('language-dialog');
+const languageBackdrop = document.getElementById('language-backdrop');
+const closeLanguageBtn = document.getElementById('close-language-btn');
 const startBtn = document.getElementById('start-btn');
 const installBtn = document.getElementById('install-btn');
 const updateBanner = document.getElementById('update-banner');
@@ -74,6 +79,43 @@ function t(key, params = {}) {
   const fallback = TRANSLATIONS.en[key] || key;
   const template = TRANSLATIONS[currentLanguage][key] || fallback;
   return template.replace(/\{(\w+)\}/g, (_, token) => String(params[token] ?? `{${token}}`));
+}
+
+function getLanguageFocusableElements() {
+  if (!languageDialog) return [];
+  return Array.from(languageDialog.querySelectorAll(FOCUSABLE_SELECTOR));
+}
+
+function isLanguageModalOpen() {
+  return !languageModal.classList.contains('hidden');
+}
+
+function closeLanguageModal({ restoreFocus = true } = {}) {
+  const wasOpen = isLanguageModalOpen();
+  languageModal.classList.add('hidden');
+  languageModal.setAttribute('aria-hidden', 'true');
+  if (!isGarageOpen()) {
+    document.body.classList.remove('modal-open');
+  }
+
+  if (!wasOpen || !restoreFocus) return;
+
+  if (openLanguageBtn && !openLanguageBtn.disabled) {
+    openLanguageBtn.focus();
+  }
+}
+
+function openLanguageModal() {
+  languageModal.classList.remove('hidden');
+  languageModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+
+  const focusable = getLanguageFocusableElements();
+  if (focusable.length) {
+    focusable[0].focus();
+  } else {
+    languageDialog.focus();
+  }
 }
 
 Object.entries(TRANSLATIONS).forEach(([code, dict]) => {
@@ -366,7 +408,9 @@ function closeGarage({ restoreFocus = true } = {}) {
   const wasOpen = isGarageOpen();
   garageModal.classList.add('hidden');
   garageModal.setAttribute('aria-hidden', 'true');
-  document.body.classList.remove('modal-open');
+  if (!isLanguageModalOpen()) {
+    document.body.classList.remove('modal-open');
+  }
 
   if (!wasOpen || !restoreFocus) return;
 
@@ -605,6 +649,9 @@ function applyTranslations() {
   maxTableSelect.setAttribute('aria-label', t('aria.highestTimesTable'));
   answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
   languageSelect.setAttribute('aria-label', t('aria.language'));
+  openLanguageBtn.setAttribute('aria-label', t('aria.openLanguage'));
+  closeLanguageBtn.setAttribute('aria-label', t('aria.closeLanguage'));
+  languageDialog.setAttribute('aria-label', t('aria.languageDialog'));
   loginNameInput.setAttribute('aria-label', t('aria.loginName'));
   openGarageBtn.setAttribute('aria-label', t('aria.openGarage'));
   closeGarageBtn.setAttribute('aria-label', t('aria.closeGarage'));
@@ -1329,6 +1376,7 @@ languageSelect.addEventListener('change', () => {
   currentLanguage = languageSelect.value;
   localStorage.setItem(STORAGE_KEYS.language, currentLanguage);
   applyTranslations();
+  closeLanguageModal();
 });
 
 
@@ -1420,22 +1468,31 @@ loginNameInput.addEventListener('keydown', (event) => {
 });
 
 logoutBtn.addEventListener('click', logout);
+openLanguageBtn.addEventListener('click', openLanguageModal);
+closeLanguageBtn.addEventListener('click', () => closeLanguageModal());
+languageBackdrop.addEventListener('click', () => closeLanguageModal());
 openGarageBtn.addEventListener('click', openGarage);
 closeGarageBtn.addEventListener('click', () => closeGarage());
 garageBackdrop.addEventListener('click', () => closeGarage());
 
 document.addEventListener('keydown', (event) => {
-  if (!isGarageOpen()) return;
+  const languageOpen = isLanguageModalOpen();
+  const garageOpen = isGarageOpen();
+  if (!languageOpen && !garageOpen) return;
 
   if (event.key === 'Escape') {
     event.preventDefault();
-    closeGarage();
+    if (languageOpen) {
+      closeLanguageModal();
+    } else {
+      closeGarage();
+    }
     return;
   }
 
   if (event.key !== 'Tab') return;
 
-  const focusable = getGarageFocusableElements();
+  const focusable = languageOpen ? getLanguageFocusableElements() : getGarageFocusableElements();
   if (!focusable.length) return;
 
   const first = focusable[0];
