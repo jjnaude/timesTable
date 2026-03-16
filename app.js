@@ -183,6 +183,7 @@ const DEFAULT_VEHICLE_TRANSFORM = {
 let vehicleTransforms = {};
 const VEHICLE_UNLOCK_SCORE_THRESHOLD = 20;
 const LOCK_ICON_ASSET = './assets/other/lock.svg';
+const FRIENDS_MIN_TABLE = 5;
 
 const VEHICLE_UNLOCK_RULES = VEHICLE_VARIANT_LIST.map((variant, index) => {
   if (index === 0) {
@@ -600,12 +601,23 @@ function getFriendsQuestionPool(target) {
   return pool;
 }
 
-function getUnlockedLevels() {
+function getFriendsModeUnlockedLevels() {
+  return new Set(
+    LEVEL_SEQUENCE
+      .filter((level) => level.maxTable >= FRIENDS_MIN_TABLE)
+      .map((level) => configKey(level)),
+  );
+}
+
+function getUnlockedLevels(operation = gameConfig.operation || getOperation()) {
+  if (operation === 'friends') {
+    return getFriendsModeUnlockedLevels();
+  }
   return activeUser ? getUserProgress(activeUser) : new Set();
 }
 
 function ensureGameConfigIsUnlocked() {
-  const unlocked = getUnlockedLevels();
+  const unlocked = getUnlockedLevels(gameConfig.operation);
   if (unlocked.has(configKey(gameConfig))) return;
   const firstUnlocked = LEVEL_SEQUENCE.find((level) => unlocked.has(configKey(level)));
   gameConfig = firstUnlocked ? { ...firstUnlocked, operation: getOperation(), questionMode: getQuestionMode() } : { mode: 'single', maxTable: 2, operation: getOperation(), questionMode: getQuestionMode() };
@@ -629,7 +641,9 @@ function syncSelectorsFromGameConfig() {
 }
 
 function applyLevelLocks() {
-  const unlocked = getUnlockedLevels();
+  const operation = gameConfig.operation || getOperation();
+  const isFriendsMode = operation === 'friends';
+  const unlocked = getUnlockedLevels(operation);
 
   const hasUnlockedForMixed = LEVEL_SEQUENCE.some(
     (level) => level.mode === 'mixed' && unlocked.has(configKey(level)),
@@ -641,6 +655,10 @@ function applyLevelLocks() {
 
   Array.from(maxTableSelect.options).forEach((opt) => {
     const value = Number(opt.value);
+    if (isFriendsMode) {
+      opt.disabled = value < FRIENDS_MIN_TABLE;
+      return;
+    }
     const singleUnlocked = unlocked.has(configKey({ mode: 'single', maxTable: value }));
     const mixedUnlocked = unlocked.has(configKey({ mode: 'mixed', maxTable: value }));
     opt.disabled = !(singleUnlocked || mixedUnlocked);
