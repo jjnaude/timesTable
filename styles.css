@@ -322,25 +322,26 @@ body.modal-open {
   padding: 6px;
 }
 
-.language-picker {
+.app-toolbar {
   display: flex;
   justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
   margin-top: 4px;
 }
 
-.language-picker label {
-  font-size: 0.95rem;
-  font-weight: bold;
+.language-trigger {
+  width: auto;
+  margin: 0;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.language-picker select {
-  width: auto;
-  min-width: 140px;
-  margin-top: 0;
-  padding: 8px 10px;
-  font-size: 1rem;
+.language-trigger:focus-visible {
+  outline: 3px solid #9cc0f3;
+  border-radius: 10px;
 }
 
 h1 {
