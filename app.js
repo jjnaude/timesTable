@@ -562,6 +562,7 @@ function getOperation() {
 }
 
 function getQuestionMode() {
+  if (getOperation() === 'friends') return 'algebra';
   return algebraModifierBtn.classList.contains('is-selected') ? 'algebra' : 'standard';
 }
 
@@ -575,6 +576,28 @@ function operationSymbol(operation) {
   if (operation === 'subtraction') return '−';
   if (operation === 'division') return '÷';
   return '×';
+}
+
+function getFriendsQuestionPool(target) {
+  const pool = [];
+
+  for (let left = 0; left <= target; left += 1) {
+    for (let right = 0; right <= target; right += 1) {
+      if (left !== target && right !== target) continue;
+
+      const additionResult = left + right;
+      if (additionResult <= target) {
+        pool.push({ operation: 'addition', leftOperand: left, rightOperand: right, result: additionResult });
+      }
+
+      const subtractionResult = left - right;
+      if (subtractionResult >= 0 && subtractionResult <= target) {
+        pool.push({ operation: 'subtraction', leftOperand: left, rightOperand: right, result: subtractionResult });
+      }
+    }
+  }
+
+  return pool;
 }
 
 function getUnlockedLevels() {
@@ -597,6 +620,12 @@ function syncSelectorsFromGameConfig() {
   operationButtons.forEach((button) => {
     setButtonSelection(button, button.dataset.value === targetOperation);
   });
+
+  const isFriendsMode = targetOperation === 'friends';
+  algebraModifierBtn.disabled = isFriendsMode;
+  if (isFriendsMode) {
+    setButtonSelection(algebraModifierBtn, true);
+  }
 }
 
 function applyLevelLocks() {
@@ -1101,8 +1130,16 @@ function makeQuestion(config, allowRepeat = false) {
     let leftOperand;
     let rightOperand;
     let result;
+    let activeOperation = operation;
 
-    if (operation === 'addition') {
+    if (operation === 'friends') {
+      const pool = getFriendsQuestionPool(table);
+      const picked = pool[Math.floor(Math.random() * pool.length)];
+      activeOperation = picked.operation;
+      leftOperand = picked.leftOperand;
+      rightOperand = picked.rightOperand;
+      result = picked.result;
+    } else if (operation === 'addition') {
       leftOperand = table;
       rightOperand = n;
       result = table + n;
@@ -1120,7 +1157,7 @@ function makeQuestion(config, allowRepeat = false) {
       result = table * n;
     }
 
-    if (questionMode === 'algebra') {
+    if (questionMode === 'algebra' || operation === 'friends') {
       const unknownSlot = ['left', 'right', 'result'][Math.floor(Math.random() * 3)];
       const shownLeft = unknownSlot === 'left' ? '?' : leftOperand;
       const shownRight = unknownSlot === 'right' ? '?' : rightOperand;
@@ -1128,8 +1165,8 @@ function makeQuestion(config, allowRepeat = false) {
       const answer = unknownSlot === 'left' ? leftOperand : unknownSlot === 'right' ? rightOperand : result;
       question = {
         answer,
-        key: `${operation}:${leftOperand}:${rightOperand}:${result}:u-${unknownSlot}`,
-        prompt: `${shownLeft} ${operationSymbol(operation)} ${shownRight} = ${shownResult}`,
+        key: `${operation}:${activeOperation}:${leftOperand}:${rightOperand}:${result}:u-${unknownSlot}`,
+        prompt: `${shownLeft} ${operationSymbol(activeOperation)} ${shownRight} = ${shownResult}`,
       };
     } else {
       question = {
