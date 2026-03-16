@@ -89,22 +89,16 @@
 
         <fieldset class="option-group">
           <legend data-i18n="legend.operation">Operation</legend>
-          <label class="option-pill"><input type="radio" name="operation" value="multiply" checked /> <span data-i18n="operation.multiply">Multiplication (×)</span></label>
-          <label class="option-pill"><input type="radio" name="operation" value="addition" /> <span data-i18n="operation.addition">Addition (+)</span></label>
-          <label class="option-pill"><input type="radio" name="operation" value="subtraction" /> <span data-i18n="operation.subtraction">Subtraction (−)</span></label>
-          <label class="option-pill"><input type="radio" name="operation" value="division" /> <span data-i18n="operation.division">Division (÷)</span></label>
+          <button type="button" class="option-pill" data-option-group="operation" data-value="multiply" aria-pressed="true"><span data-i18n="operation.multiply">Multiplication (×)</span></button>
+          <button type="button" class="option-pill" data-option-group="operation" data-value="addition" aria-pressed="false"><span data-i18n="operation.addition">Addition (+)</span></button>
+          <button type="button" class="option-pill" data-option-group="operation" data-value="subtraction" aria-pressed="false"><span data-i18n="operation.subtraction">Subtraction (−)</span></button>
+          <button type="button" class="option-pill" data-option-group="operation" data-value="division" aria-pressed="false"><span data-i18n="operation.division">Division (÷)</span></button>
         </fieldset>
 
         <fieldset class="option-group">
-          <legend data-i18n="legend.mode">Mode</legend>
-          <label class="option-pill"><input type="radio" name="mode" value="single" checked /> <span data-i18n="mode.single">Single table only</span></label>
-          <label class="option-pill"><input type="radio" name="mode" value="mixed" /> <span data-i18n="mode.mixed">Mixed tables (2 to selected)</span></label>
-        </fieldset>
-
-        <fieldset>
-          <legend data-i18n="legend.questionMode">Question style</legend>
-          <label><input type="radio" name="question-mode" value="standard" checked /> <span data-i18n="questionMode.standard">Standard (A # B = ?)</span></label>
-          <label><input type="radio" name="question-mode" value="algebra" /> <span data-i18n="questionMode.algebra">Algebra mode (missing number can be anywhere)</span></label>
+          <legend data-i18n="legend.modifiers">Modifiers</legend>
+          <button type="button" id="modifier-mixed-btn" class="option-pill" data-option-group="modifier" data-value="mixed" aria-pressed="false"><span data-i18n="modifier.mixed">Mixed</span></button>
+          <button type="button" id="modifier-algebra-btn" class="option-pill" data-option-group="modifier" data-value="algebra" aria-pressed="false"><span data-i18n="modifier.algebra">Algebra mode</span></button>
         </fieldset>
 
         <button id="start-btn" class="primary" data-i18n="button.start">Start 1-minute sprint</button>
