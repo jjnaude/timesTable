@@ -88,6 +88,14 @@
         <select id="max-table" aria-label="Highest times table"></select>
 
         <fieldset>
+          <legend data-i18n="legend.operation">Operation</legend>
+          <label><input type="radio" name="operation" value="multiply" checked /> <span data-i18n="operation.multiply">Multiplication (×)</span></label>
+          <label><input type="radio" name="operation" value="addition" /> <span data-i18n="operation.addition">Addition (+)</span></label>
+          <label><input type="radio" name="operation" value="subtraction" /> <span data-i18n="operation.subtraction">Subtraction (−)</span></label>
+          <label><input type="radio" name="operation" value="division" /> <span data-i18n="operation.division">Division (÷)</span></label>
+        </fieldset>
+
+        <fieldset>
           <legend data-i18n="legend.mode">Mode</legend>
           <label><input type="radio" name="mode" value="single" checked /> <span data-i18n="mode.single">Single table only</span></label>
           <label><input type="radio" name="mode" value="mixed" /> <span data-i18n="mode.mixed">Mixed tables (2 to selected)</span></label>

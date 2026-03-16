@@ -97,6 +97,11 @@ function configKey(config) {
   return `${config.mode}-${config.maxTable}`;
 }
 
+function leaderboardConfigKey(config) {
+  const operation = config.operation || 'multiply';
+  return `${operation}-${configKey(config)}`;
+}
+
 
 const VEHICLE_ASSETS = {
   bicycle: './assets/vehicles/bicycle.svg',
@@ -200,9 +205,10 @@ function isVehicleUnlocked(variant) {
 
 function getModeLabel(config) {
   if (!config) return '';
+  const operation = t(`operation.${gameConfig.operation || 'multiply'}`);
   return config.mode === 'single'
-    ? t('vehicle.unlockMode.single', { max: config.maxTable })
-    : t('vehicle.unlockMode.mixed', { max: config.maxTable });
+    ? t('vehicle.unlockMode.single', { max: config.maxTable, operation })
+    : t('vehicle.unlockMode.mixed', { max: config.maxTable, operation });
 }
 
 function getVehicleUnlockText(variant) {
@@ -423,7 +429,25 @@ function unlockNextLevelForScore(config, currentScore) {
 }
 
 function getLeaderboard(config) {
-  const raw = localStorage.getItem(`leaderboard:${configKey(config)}`);
+  const scopedKey = `leaderboard:${leaderboardConfigKey(config)}`;
+  const raw = localStorage.getItem(scopedKey);
+
+  if (!raw && (config.operation || 'multiply') === 'multiply') {
+    const legacyRaw = localStorage.getItem(`leaderboard:${configKey(config)}`);
+    if (legacyRaw) {
+      try {
+        const legacyParsed = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyParsed)) {
+          localStorage.setItem(scopedKey, legacyRaw);
+          localStorage.removeItem(`leaderboard:${configKey(config)}`);
+          return legacyParsed;
+        }
+      } catch {
+        return [];
+      }
+    }
+  }
+
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -434,13 +458,14 @@ function getLeaderboard(config) {
 }
 
 function saveLeaderboard(config, entries) {
-  localStorage.setItem(`leaderboard:${configKey(config)}`, JSON.stringify(entries.slice(0, 5)));
+  localStorage.setItem(`leaderboard:${leaderboardConfigKey(config)}`, JSON.stringify(entries.slice(0, 5)));
 }
 
 function settingLabel(config) {
+  const operation = t(`operation.${config.operation || 'multiply'}`);
   return config.mode === 'single'
-    ? t('leaderboard.single', { max: config.maxTable })
-    : t('leaderboard.mixed', { max: config.maxTable });
+    ? t('leaderboard.single', { max: config.maxTable, operation })
+    : t('leaderboard.mixed', { max: config.maxTable, operation });
 }
 
 function renderLeaderboard(config) {
@@ -480,6 +505,17 @@ function getMode() {
   return document.querySelector('input[name="mode"]:checked').value;
 }
 
+function getOperation() {
+  return document.querySelector('input[name="operation"]:checked').value;
+}
+
+function operationSymbol(operation) {
+  if (operation === 'addition') return '+';
+  if (operation === 'subtraction') return '−';
+  if (operation === 'division') return '÷';
+  return '×';
+}
+
 function getUnlockedLevels() {
   return activeUser ? getUserProgress(activeUser) : new Set();
 }
@@ -488,7 +524,7 @@ function ensureGameConfigIsUnlocked() {
   const unlocked = getUnlockedLevels();
   if (unlocked.has(configKey(gameConfig))) return;
   const firstUnlocked = LEVEL_SEQUENCE.find((level) => unlocked.has(configKey(level)));
-  gameConfig = firstUnlocked || { mode: 'single', maxTable: 2 };
+  gameConfig = firstUnlocked || { mode: 'single', maxTable: 2, operation: getOperation() };
 }
 
 function syncSelectorsFromGameConfig() {
@@ -496,6 +532,11 @@ function syncSelectorsFromGameConfig() {
   const targetMode = gameConfig.mode;
   document.querySelectorAll('input[name="mode"]').forEach((el) => {
     el.checked = el.value === targetMode;
+  });
+
+  const targetOperation = gameConfig.operation || getOperation();
+  document.querySelectorAll('input[name="operation"]').forEach((el) => {
+    el.checked = el.value === targetOperation;
   });
 }
 
@@ -670,7 +711,7 @@ for (let i = 2; i <= 12; i += 1) {
   maxTableSelect.appendChild(option);
 }
 
-let gameConfig = { maxTable: 2, mode: 'single' };
+let gameConfig = { maxTable: 2, mode: 'single', operation: 'multiply' };
 let score = 0;
 let secondsLeft = 60;
 let timerInterval = null;
@@ -986,23 +1027,52 @@ function getAchievedMilestones(currentValue, milestones, previousValue) {
 
 function makeQuestion(config, allowRepeat = false) {
   const tables = tablePool(config);
+  const operation = config.operation || 'multiply';
   let question;
   let guard = 0;
+
   do {
     const table = tables[Math.floor(Math.random() * tables.length)];
-    const multiplier = 2 + Math.floor(Math.random() * 11);
-    question = {
-      table,
-      multiplier,
-      answer: table * multiplier,
-      key: `${table}x${multiplier}`,
-    };
+    const n = 2 + Math.floor(Math.random() * 11);
+
+    if (operation === 'addition') {
+      question = {
+        left: table,
+        right: n,
+        answer: table + n,
+        key: `+${table}:${n}`,
+      };
+    } else if (operation === 'subtraction') {
+      const high = table + n;
+      question = {
+        left: high,
+        right: table,
+        answer: n,
+        key: `-${high}:${table}`,
+      };
+    } else if (operation === 'division') {
+      const dividend = table * n;
+      question = {
+        left: dividend,
+        right: table,
+        answer: n,
+        key: `/${dividend}:${table}`,
+      };
+    } else {
+      question = {
+        left: table,
+        right: n,
+        answer: table * n,
+        key: `*${table}:${n}`,
+      };
+    }
+
     guard += 1;
   } while (!allowRepeat && question.key === lastQuestionKey && guard < 50);
 
   currentQuestion = question;
   lastQuestionKey = question.key;
-  questionEl.textContent = `${question.table} × ${question.multiplier} = ?`;
+  questionEl.textContent = `${question.left} ${operationSymbol(operation)} ${question.right} = ?`;
   answerInput.value = '';
 }
 
@@ -1219,6 +1289,7 @@ startBtn.addEventListener('click', () => {
   gameConfig = {
     maxTable: Number(maxTableSelect.value),
     mode: getMode(),
+    operation: getOperation(),
   };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
@@ -1300,6 +1371,7 @@ playAgainBtn.addEventListener('click', () => {
   gameConfig = {
     maxTable: Number(maxTableSelect.value),
     mode: getMode(),
+    operation: getOperation(),
   };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
@@ -1351,9 +1423,19 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+
+document.querySelectorAll('input[name="operation"]').forEach((el) => {
+  el.addEventListener('change', () => {
+    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation() };
+    ensureGameConfigIsUnlocked();
+    syncSelectorsFromGameConfig();
+    renderLeaderboard(gameConfig);
+  });
+});
+
 document.querySelectorAll('input[name="mode"]').forEach((el) => {
   el.addEventListener('change', () => {
-    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode() };
+    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation() };
     ensureGameConfigIsUnlocked();
     syncSelectorsFromGameConfig();
     renderLeaderboard(gameConfig);
@@ -1361,7 +1443,7 @@ document.querySelectorAll('input[name="mode"]').forEach((el) => {
 });
 
 maxTableSelect.addEventListener('change', () => {
-  gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode() };
+  gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation() };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
