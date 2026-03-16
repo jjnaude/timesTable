@@ -322,10 +322,17 @@ body.modal-open {
   padding: 6px;
 }
 
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
 .app-toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 4px;
+  flex-shrink: 0;
 }
 
 .language-trigger {
@@ -346,7 +353,7 @@ body.modal-open {
 
 h1 {
   text-align: center;
-  margin: 12px 0;
+  margin: 0;
 }
 
 .card {
