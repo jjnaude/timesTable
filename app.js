@@ -39,6 +39,10 @@ const garageBackdrop = document.getElementById('garage-backdrop');
 const closeGarageBtn = document.getElementById('close-garage-btn');
 const garageGrid = document.getElementById('garage-grid');
 const vehicleColorInput = document.getElementById('vehicle-color');
+const operationButtons = Array.from(document.querySelectorAll('[data-option-group="operation"]'));
+const modifierButtons = Array.from(document.querySelectorAll('[data-option-group="modifier"]'));
+const mixedModifierBtn = document.getElementById('modifier-mixed-btn');
+const algebraModifierBtn = document.getElementById('modifier-algebra-btn');
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -505,15 +509,21 @@ function showOnly(screen) {
 }
 
 function getMode() {
-  return document.querySelector('input[name="mode"]:checked').value;
+  return mixedModifierBtn.classList.contains('is-selected') ? 'mixed' : 'single';
 }
 
 function getOperation() {
-  return document.querySelector('input[name="operation"]:checked').value;
+  const selectedOperationButton = operationButtons.find((button) => button.classList.contains('is-selected'));
+  return selectedOperationButton?.dataset.value || 'multiply';
 }
 
 function getQuestionMode() {
-  return document.querySelector('input[name="question-mode"]:checked').value;
+  return algebraModifierBtn.classList.contains('is-selected') ? 'algebra' : 'standard';
+}
+
+function setButtonSelection(button, selected) {
+  button.classList.toggle('is-selected', selected);
+  button.setAttribute('aria-pressed', String(selected));
 }
 
 function operationSymbol(operation) {
@@ -536,31 +546,25 @@ function ensureGameConfigIsUnlocked() {
 
 function syncSelectorsFromGameConfig() {
   maxTableSelect.value = String(gameConfig.maxTable);
-  const targetMode = gameConfig.mode;
-  document.querySelectorAll('input[name="mode"]').forEach((el) => {
-    el.checked = el.value === targetMode;
-  });
+  setButtonSelection(mixedModifierBtn, gameConfig.mode === 'mixed');
+  setButtonSelection(algebraModifierBtn, (gameConfig.questionMode || 'standard') === 'algebra');
 
   const targetOperation = gameConfig.operation || getOperation();
-  document.querySelectorAll('input[name="operation"]').forEach((el) => {
-    el.checked = el.value === targetOperation;
-  });
-
-  const targetQuestionMode = gameConfig.questionMode || getQuestionMode();
-  document.querySelectorAll('input[name="question-mode"]').forEach((el) => {
-    el.checked = el.value === targetQuestionMode;
+  operationButtons.forEach((button) => {
+    setButtonSelection(button, button.dataset.value === targetOperation);
   });
 }
 
 function applyLevelLocks() {
   const unlocked = getUnlockedLevels();
 
-  document.querySelectorAll('input[name="mode"]').forEach((modeInput) => {
-    const hasUnlockedForMode = LEVEL_SEQUENCE.some(
-      (level) => level.mode === modeInput.value && unlocked.has(configKey(level)),
-    );
-    modeInput.disabled = !hasUnlockedForMode;
-  });
+  const hasUnlockedForMixed = LEVEL_SEQUENCE.some(
+    (level) => level.mode === 'mixed' && unlocked.has(configKey(level)),
+  );
+  mixedModifierBtn.disabled = !hasUnlockedForMixed;
+  if (mixedModifierBtn.disabled) {
+    setButtonSelection(mixedModifierBtn, false);
+  }
 
   Array.from(maxTableSelect.options).forEach((opt) => {
     const value = Number(opt.value);
@@ -1447,38 +1451,33 @@ document.addEventListener('keydown', (event) => {
 });
 
 
-document.querySelectorAll('input[name="operation"]').forEach((el) => {
-  el.addEventListener('change', () => {
-    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
-    ensureGameConfigIsUnlocked();
-    syncSelectorsFromGameConfig();
-    renderLeaderboard(gameConfig);
-  });
-});
-
-document.querySelectorAll('input[name="mode"]').forEach((el) => {
-  el.addEventListener('change', () => {
-    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
-    ensureGameConfigIsUnlocked();
-    syncSelectorsFromGameConfig();
-    renderLeaderboard(gameConfig);
-  });
-});
-
-document.querySelectorAll('input[name="question-mode"]').forEach((el) => {
-  el.addEventListener('change', () => {
-    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
-    ensureGameConfigIsUnlocked();
-    syncSelectorsFromGameConfig();
-    renderLeaderboard(gameConfig);
-  });
-});
-
-maxTableSelect.addEventListener('change', () => {
+function updateConfigFromControls() {
   gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
+}
+
+operationButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    operationButtons.forEach((candidate) => {
+      setButtonSelection(candidate, candidate === button);
+    });
+    updateConfigFromControls();
+  });
+});
+
+modifierButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    if (button.disabled) return;
+    const isSelected = button.classList.contains('is-selected');
+    setButtonSelection(button, !isSelected);
+    updateConfigFromControls();
+  });
+});
+
+maxTableSelect.addEventListener('change', () => {
+  updateConfigFromControls();
 });
 
 vehicleColorInput.addEventListener('input', () => {
