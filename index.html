@@ -11,9 +11,12 @@
   </head>
   <body>
     <main class="app">
-      <div class="app-toolbar">
-        <button id="open-language-btn" class="language-trigger" type="button" aria-label="Open language menu">🌍</button>
-      </div>
+      <header class="app-header">
+        <h1 data-i18n="title.app">Times Table Sprint</h1>
+        <div class="app-toolbar">
+          <button id="open-language-btn" class="language-trigger" type="button" aria-label="Open language menu">🌍</button>
+        </div>
+      </header>
 
       <section id="language-modal" class="garage-modal hidden" aria-hidden="true">
         <div id="language-backdrop" class="garage-modal__backdrop"></div>
@@ -36,7 +39,6 @@
         </div>
       </section>
 
-      <h1 data-i18n="title.app">Times Table Sprint</h1>
       <button id="install-btn" class="secondary hidden" type="button">Install app</button>
 
       <section id="vehicle-stage" class="vehicle-stage hidden" aria-live="polite" aria-label="Vehicle stage">
