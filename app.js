@@ -99,7 +99,8 @@ function configKey(config) {
 
 function leaderboardConfigKey(config) {
   const operation = config.operation || 'multiply';
-  return `${operation}-${configKey(config)}`;
+  const questionMode = config.questionMode || 'standard';
+  return `${operation}-${questionMode}-${configKey(config)}`;
 }
 
 
@@ -463,9 +464,11 @@ function saveLeaderboard(config, entries) {
 
 function settingLabel(config) {
   const operation = t(`operation.${config.operation || 'multiply'}`);
-  return config.mode === 'single'
+  const baseLabel = config.mode === 'single'
     ? t('leaderboard.single', { max: config.maxTable, operation })
     : t('leaderboard.mixed', { max: config.maxTable, operation });
+  const questionMode = config.questionMode === 'algebra' ? t('questionMode.algebra') : t('questionMode.standard');
+  return `${baseLabel} • ${questionMode}`;
 }
 
 function renderLeaderboard(config) {
@@ -509,6 +512,10 @@ function getOperation() {
   return document.querySelector('input[name="operation"]:checked').value;
 }
 
+function getQuestionMode() {
+  return document.querySelector('input[name="question-mode"]:checked').value;
+}
+
 function operationSymbol(operation) {
   if (operation === 'addition') return '+';
   if (operation === 'subtraction') return '−';
@@ -524,7 +531,7 @@ function ensureGameConfigIsUnlocked() {
   const unlocked = getUnlockedLevels();
   if (unlocked.has(configKey(gameConfig))) return;
   const firstUnlocked = LEVEL_SEQUENCE.find((level) => unlocked.has(configKey(level)));
-  gameConfig = firstUnlocked || { mode: 'single', maxTable: 2, operation: getOperation() };
+  gameConfig = firstUnlocked ? { ...firstUnlocked, operation: getOperation(), questionMode: getQuestionMode() } : { mode: 'single', maxTable: 2, operation: getOperation(), questionMode: getQuestionMode() };
 }
 
 function syncSelectorsFromGameConfig() {
@@ -537,6 +544,11 @@ function syncSelectorsFromGameConfig() {
   const targetOperation = gameConfig.operation || getOperation();
   document.querySelectorAll('input[name="operation"]').forEach((el) => {
     el.checked = el.value === targetOperation;
+  });
+
+  const targetQuestionMode = gameConfig.questionMode || getQuestionMode();
+  document.querySelectorAll('input[name="question-mode"]').forEach((el) => {
+    el.checked = el.value === targetQuestionMode;
   });
 }
 
@@ -711,7 +723,7 @@ for (let i = 2; i <= 12; i += 1) {
   maxTableSelect.appendChild(option);
 }
 
-let gameConfig = { maxTable: 2, mode: 'single', operation: 'multiply' };
+let gameConfig = { maxTable: 2, mode: 'single', operation: 'multiply', questionMode: 'standard' };
 let score = 0;
 let secondsLeft = 60;
 let timerInterval = null;
@@ -1028,42 +1040,51 @@ function getAchievedMilestones(currentValue, milestones, previousValue) {
 function makeQuestion(config, allowRepeat = false) {
   const tables = tablePool(config);
   const operation = config.operation || 'multiply';
+  const questionMode = config.questionMode || 'standard';
   let question;
   let guard = 0;
 
   do {
     const table = tables[Math.floor(Math.random() * tables.length)];
     const n = 2 + Math.floor(Math.random() * 11);
+    let leftOperand;
+    let rightOperand;
+    let result;
 
     if (operation === 'addition') {
-      question = {
-        left: table,
-        right: n,
-        answer: table + n,
-        key: `+${table}:${n}`,
-      };
+      leftOperand = table;
+      rightOperand = n;
+      result = table + n;
     } else if (operation === 'subtraction') {
-      const high = table + n;
-      question = {
-        left: high,
-        right: table,
-        answer: n,
-        key: `-${high}:${table}`,
-      };
+      leftOperand = table + n;
+      rightOperand = table;
+      result = n;
     } else if (operation === 'division') {
-      const dividend = table * n;
+      leftOperand = table * n;
+      rightOperand = table;
+      result = n;
+    } else {
+      leftOperand = table;
+      rightOperand = n;
+      result = table * n;
+    }
+
+    if (questionMode === 'algebra') {
+      const unknownSlot = ['left', 'right', 'result'][Math.floor(Math.random() * 3)];
+      const shownLeft = unknownSlot === 'left' ? '?' : leftOperand;
+      const shownRight = unknownSlot === 'right' ? '?' : rightOperand;
+      const shownResult = unknownSlot === 'result' ? '?' : result;
+      const answer = unknownSlot === 'left' ? leftOperand : unknownSlot === 'right' ? rightOperand : result;
       question = {
-        left: dividend,
-        right: table,
-        answer: n,
-        key: `/${dividend}:${table}`,
+        answer,
+        key: `${operation}:${leftOperand}:${rightOperand}:${result}:u-${unknownSlot}`,
+        prompt: `${shownLeft} ${operationSymbol(operation)} ${shownRight} = ${shownResult}`,
       };
     } else {
       question = {
-        left: table,
-        right: n,
-        answer: table * n,
-        key: `*${table}:${n}`,
+        answer: result,
+        key: `${operation}:${leftOperand}:${rightOperand}:u-result`,
+        prompt: `${leftOperand} ${operationSymbol(operation)} ${rightOperand} = ?`,
       };
     }
 
@@ -1072,7 +1093,7 @@ function makeQuestion(config, allowRepeat = false) {
 
   currentQuestion = question;
   lastQuestionKey = question.key;
-  questionEl.textContent = `${question.left} ${operationSymbol(operation)} ${question.right} = ?`;
+  questionEl.textContent = question.prompt;
   answerInput.value = '';
 }
 
@@ -1290,6 +1311,7 @@ startBtn.addEventListener('click', () => {
     maxTable: Number(maxTableSelect.value),
     mode: getMode(),
     operation: getOperation(),
+    questionMode: getQuestionMode(),
   };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
@@ -1372,6 +1394,7 @@ playAgainBtn.addEventListener('click', () => {
     maxTable: Number(maxTableSelect.value),
     mode: getMode(),
     operation: getOperation(),
+    questionMode: getQuestionMode(),
   };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
@@ -1426,7 +1449,7 @@ document.addEventListener('keydown', (event) => {
 
 document.querySelectorAll('input[name="operation"]').forEach((el) => {
   el.addEventListener('change', () => {
-    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation() };
+    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
     ensureGameConfigIsUnlocked();
     syncSelectorsFromGameConfig();
     renderLeaderboard(gameConfig);
@@ -1435,7 +1458,16 @@ document.querySelectorAll('input[name="operation"]').forEach((el) => {
 
 document.querySelectorAll('input[name="mode"]').forEach((el) => {
   el.addEventListener('change', () => {
-    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation() };
+    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
+    ensureGameConfigIsUnlocked();
+    syncSelectorsFromGameConfig();
+    renderLeaderboard(gameConfig);
+  });
+});
+
+document.querySelectorAll('input[name="question-mode"]').forEach((el) => {
+  el.addEventListener('change', () => {
+    gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
     ensureGameConfigIsUnlocked();
     syncSelectorsFromGameConfig();
     renderLeaderboard(gameConfig);
@@ -1443,7 +1475,7 @@ document.querySelectorAll('input[name="mode"]').forEach((el) => {
 });
 
 maxTableSelect.addEventListener('change', () => {
-  gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation() };
+  gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
