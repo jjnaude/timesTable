@@ -386,6 +386,58 @@ button {
   font-size: 1.1rem;
 }
 
+
+.wheel-picker {
+  position: relative;
+  margin-top: 8px;
+  height: 160px;
+  overflow-y: auto;
+  border: 1px solid #c8d8ec;
+  border-radius: 12px;
+  padding: 56px 0;
+  background: linear-gradient(to bottom, #f4f8ff, #fff 35%, #fff 65%, #f4f8ff);
+  scroll-snap-type: y mandatory;
+}
+
+.wheel-picker:focus-visible {
+  outline: 3px solid #7eb2f0;
+  outline-offset: 2px;
+}
+
+.wheel-picker::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 46px;
+  transform: translateY(-50%);
+  border-radius: 10px;
+  border: 2px solid #9cc0f3;
+  background: rgba(126, 178, 240, 0.12);
+  pointer-events: none;
+}
+
+.wheel-picker__option {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  scroll-snap-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #6d7a8d;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.wheel-picker__option:disabled {
+  opacity: 0.3;
+}
+
+.wheel-picker__option.is-selected {
+  color: var(--primary-dark);
+  transform: scale(1.06);
+}
+
 fieldset {
   border: 1px solid #d7e4f4;
   border-radius: 10px;

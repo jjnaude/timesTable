@@ -1,4 +1,4 @@
-const maxTableSelect = document.getElementById('max-table');
+const maxTableWheel = document.getElementById('max-table-wheel');
 const languageSelect = document.getElementById('language-select');
 const openLanguageBtn = document.getElementById('open-language-btn');
 const languageModal = document.getElementById('language-modal');
@@ -48,6 +48,53 @@ const operationButtons = Array.from(document.querySelectorAll('[data-option-grou
 const modifierButtons = Array.from(document.querySelectorAll('[data-option-group="modifier"]'));
 const mixedModifierBtn = document.getElementById('modifier-mixed-btn');
 const algebraModifierBtn = document.getElementById('modifier-algebra-btn');
+
+let maxTableValue = 2;
+let maxTableOptionElements = [];
+
+function getMaxTableValue() {
+  return maxTableValue;
+}
+
+function setMaxTableValue(value, { syncScroll = true } = {}) {
+  const normalized = Math.min(12, Math.max(2, Number(value) || 2));
+  const isSameValue = maxTableValue === normalized;
+  maxTableValue = normalized;
+  maxTableOptionElements.forEach((button) => {
+    const selected = Number(button.dataset.value) === normalized;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-selected', String(selected));
+    button.tabIndex = selected ? 0 : -1;
+  });
+
+  if (!isSameValue && syncScroll && maxTableWheel) {
+    const selectedButton = maxTableOptionElements.find((button) => Number(button.dataset.value) === normalized);
+    if (selectedButton) {
+      selectedButton.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+}
+
+function getClosestWheelOption() {
+  const wheelRect = maxTableWheel.getBoundingClientRect();
+  const wheelCenter = wheelRect.top + wheelRect.height / 2;
+  let closestOption = null;
+  let smallestDistance = Infinity;
+
+  maxTableOptionElements.forEach((button) => {
+    if (button.disabled) return;
+    const rect = button.getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const distance = Math.abs(center - wheelCenter);
+    if (distance < smallestDistance) {
+      smallestDistance = distance;
+      closestOption = button;
+    }
+  });
+
+  return closestOption;
+}
+
 
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -624,7 +671,7 @@ function ensureGameConfigIsUnlocked() {
 }
 
 function syncSelectorsFromGameConfig() {
-  maxTableSelect.value = String(gameConfig.maxTable);
+  setMaxTableValue(gameConfig.maxTable, { syncScroll: false });
   setButtonSelection(mixedModifierBtn, gameConfig.mode === 'mixed');
   setButtonSelection(algebraModifierBtn, (gameConfig.questionMode || 'standard') === 'algebra');
 
@@ -653,19 +700,19 @@ function applyLevelLocks() {
     setButtonSelection(mixedModifierBtn, false);
   }
 
-  Array.from(maxTableSelect.options).forEach((opt) => {
-    const value = Number(opt.value);
+  maxTableOptionElements.forEach((button) => {
+    const value = Number(button.dataset.value);
     if (isFriendsMode) {
-      opt.disabled = value < FRIENDS_MIN_TABLE;
+      button.disabled = value < FRIENDS_MIN_TABLE;
       return;
     }
     const singleUnlocked = unlocked.has(configKey({ mode: 'single', maxTable: value }));
     const mixedUnlocked = unlocked.has(configKey({ mode: 'mixed', maxTable: value }));
-    opt.disabled = !(singleUnlocked || mixedUnlocked);
+    button.disabled = !(singleUnlocked || mixedUnlocked);
   });
 
   const selectedMode = getMode();
-  const selectedMax = Number(maxTableSelect.value);
+  const selectedMax = getMaxTableValue();
   const selectedUnlocked = unlocked.has(configKey({ mode: selectedMode, maxTable: selectedMax }));
   if (!selectedUnlocked) {
     ensureGameConfigIsUnlocked();
@@ -693,7 +740,7 @@ function applyTranslations() {
     el.textContent = t(el.dataset.i18n);
   });
 
-  maxTableSelect.setAttribute('aria-label', t('aria.highestTimesTable'));
+  maxTableWheel.setAttribute('aria-label', t('aria.highestTimesTable'));
   answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
   languageSelect.setAttribute('aria-label', t('aria.language'));
   openLanguageBtn.setAttribute('aria-label', t('aria.openLanguage'));
@@ -815,11 +862,18 @@ updateBtn.addEventListener('click', () => {
 dismissUpdateBtn.addEventListener('click', hideUpdateBanner);
 
 for (let i = 2; i <= 12; i += 1) {
-  const option = document.createElement('option');
-  option.value = String(i);
-  option.textContent = `${i}`;
-  maxTableSelect.appendChild(option);
+  const optionButton = document.createElement('button');
+  optionButton.type = 'button';
+  optionButton.className = 'wheel-picker__option';
+  optionButton.dataset.value = String(i);
+  optionButton.textContent = `${i}`;
+  optionButton.setAttribute('role', 'option');
+  optionButton.setAttribute('aria-selected', 'false');
+  optionButton.tabIndex = -1;
+  maxTableWheel.appendChild(optionButton);
+  maxTableOptionElements.push(optionButton);
 }
+setMaxTableValue(maxTableValue, { syncScroll: false });
 
 let gameConfig = { maxTable: 2, mode: 'single', operation: 'multiply', questionMode: 'standard' };
 let score = 0;
@@ -1416,7 +1470,7 @@ window.addEventListener('resize', () => {
 
 startBtn.addEventListener('click', () => {
   gameConfig = {
-    maxTable: Number(maxTableSelect.value),
+    maxTable: getMaxTableValue(),
     mode: getMode(),
     operation: getOperation(),
     questionMode: getQuestionMode(),
@@ -1500,7 +1554,7 @@ document.addEventListener('keydown', (event) => {
 playAgainBtn.addEventListener('click', () => {
   showOnly(setupScreen);
   gameConfig = {
-    maxTable: Number(maxTableSelect.value),
+    maxTable: getMaxTableValue(),
     mode: getMode(),
     operation: getOperation(),
     questionMode: getQuestionMode(),
@@ -1566,7 +1620,7 @@ document.addEventListener('keydown', (event) => {
 
 
 function updateConfigFromControls() {
-  gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
+  gameConfig = { maxTable: getMaxTableValue(), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
@@ -1590,8 +1644,49 @@ modifierButtons.forEach((button) => {
   });
 });
 
-maxTableSelect.addEventListener('change', () => {
+maxTableWheel.addEventListener('click', (event) => {
+  const optionButton = event.target.closest('.wheel-picker__option');
+  if (!optionButton || optionButton.disabled) return;
+  setMaxTableValue(Number(optionButton.dataset.value));
   updateConfigFromControls();
+});
+
+maxTableWheel.addEventListener('keydown', (event) => {
+  const enabledValues = maxTableOptionElements
+    .filter((button) => !button.disabled)
+    .map((button) => Number(button.dataset.value));
+  if (!enabledValues.length) return;
+
+  const currentValue = getMaxTableValue();
+  const currentIndex = enabledValues.indexOf(currentValue);
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    const nextIndex = Math.min(enabledValues.length - 1, Math.max(0, currentIndex + 1));
+    setMaxTableValue(enabledValues[nextIndex]);
+    updateConfigFromControls();
+  } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+    event.preventDefault();
+    const prevIndex = Math.max(0, currentIndex - 1);
+    setMaxTableValue(enabledValues[prevIndex]);
+    updateConfigFromControls();
+  }
+});
+
+let wheelScrollDebounceId = null;
+maxTableWheel.addEventListener('scroll', () => {
+  if (wheelScrollDebounceId) {
+    clearTimeout(wheelScrollDebounceId);
+  }
+
+  wheelScrollDebounceId = setTimeout(() => {
+    const closestOption = getClosestWheelOption();
+    if (!closestOption) return;
+    const nextValue = Number(closestOption.dataset.value);
+    if (nextValue === getMaxTableValue()) return;
+    setMaxTableValue(nextValue, { syncScroll: false });
+    updateConfigFromControls();
+  }, 120);
 });
 
 vehicleColorInput.addEventListener('input', () => {
