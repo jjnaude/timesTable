@@ -1622,6 +1622,7 @@ function updateConfigFromControls() {
   gameConfig = { maxTable: getMaxTableValue(), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
+  applyLevelLocks();
   renderLeaderboard(gameConfig);
 }
 
