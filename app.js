@@ -1342,10 +1342,9 @@ function significantDigitCount(value) {
 
 function maybeAutoCheckAnswer() {
   if (!currentQuestion) return;
-  const expectedDigits = currentQuestion.answer === 0
-    ? 1
-    : significantDigitCount(String(currentQuestion.answer));
-  if (significantDigitCount(answerInput.value) >= expectedDigits) {
+  const expectedDigits = String(currentQuestion.answer).length;
+  if (currentQuestion.answer === 0 && String(answerInput.value).length>=1 ||
+    significantDigitCount(answerInput.value) >= expectedDigits) {
     checkAnswer();
   }
 }
