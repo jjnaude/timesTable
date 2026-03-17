@@ -106,8 +106,13 @@
 
       <section id="setup-screen" class="card hidden">
         <h2 data-i18n="title.challenge">Choose your challenge</h2>
-        <label for="max-table" data-i18n="label.maxTable">Highest times table (2-12)</label>
-        <select id="max-table" aria-label="Highest times table"></select>
+        <label for="max-table-spinner" data-i18n="label.maxTable">Highest times table (2-12)</label>
+        <div id="max-table-spinner" class="table-wheel" role="spinbutton" aria-label="Highest times table" aria-valuemin="2" aria-valuemax="12" aria-valuenow="2" tabindex="0">
+          <div class="table-wheel__window" aria-hidden="true">
+            <ol id="max-table-wheel" class="table-wheel__items"></ol>
+            <div class="table-wheel__selection"></div>
+          </div>
+        </div>
 
         <fieldset class="option-group">
           <legend data-i18n="legend.operation">Operation</legend>

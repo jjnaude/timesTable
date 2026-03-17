@@ -1,4 +1,5 @@
-const maxTableSelect = document.getElementById('max-table');
+const maxTableSpinner = document.getElementById('max-table-spinner');
+const maxTableWheel = document.getElementById('max-table-wheel');
 const languageSelect = document.getElementById('language-select');
 const openLanguageBtn = document.getElementById('open-language-btn');
 const languageModal = document.getElementById('language-modal');
@@ -59,6 +60,10 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 let lastGarageFocus = null;
+const TABLE_WHEEL_VALUES = Array.from({ length: 11 }, (_, index) => index + 2);
+const TABLE_WHEEL_STEP_PIXELS = 44;
+let selectedMaxTable = 2;
+let tableWheelDragState = null;
 
 const STORAGE_KEYS = {
   language: 'language',
@@ -589,7 +594,8 @@ function ensureGameConfigIsUnlocked() {
 }
 
 function syncSelectorsFromGameConfig() {
-  maxTableSelect.value = String(gameConfig.maxTable);
+  selectedMaxTable = gameConfig.maxTable;
+  renderMaxTableSpinner();
   setButtonSelection(mixedModifierBtn, gameConfig.mode === 'mixed');
   setButtonSelection(algebraModifierBtn, (gameConfig.questionMode || 'standard') === 'algebra');
 
@@ -597,6 +603,100 @@ function syncSelectorsFromGameConfig() {
   operationButtons.forEach((button) => {
     setButtonSelection(button, button.dataset.value === targetOperation);
   });
+}
+
+function getSelectedMaxTable() {
+  return selectedMaxTable;
+}
+
+function getSelectableTables(unlocked = getUnlockedLevels()) {
+  const selectable = [];
+  for (let table = 2; table <= 12; table += 1) {
+    const singleUnlocked = unlocked.has(configKey({ mode: 'single', maxTable: table }));
+    const mixedUnlocked = unlocked.has(configKey({ mode: 'mixed', maxTable: table }));
+    if (singleUnlocked || mixedUnlocked) {
+      selectable.push(table);
+    }
+  }
+  return selectable.length ? selectable : [2];
+}
+
+function clampTableToUnlocked(value, unlocked = getUnlockedLevels()) {
+  const selectableTables = getSelectableTables(unlocked);
+  const bounded = Math.min(12, Math.max(2, Number(value) || 2));
+
+  let nearest = selectableTables[0];
+  let nearestDistance = Math.abs(bounded - nearest);
+
+  selectableTables.forEach((candidate) => {
+    const distance = Math.abs(bounded - candidate);
+    if (distance < nearestDistance) {
+      nearest = candidate;
+      nearestDistance = distance;
+    }
+  });
+
+  return nearest;
+}
+
+function setSelectedMaxTable(value, { unlocked = getUnlockedLevels() } = {}) {
+  selectedMaxTable = clampTableToUnlocked(value, unlocked);
+  renderMaxTableSpinner(unlocked);
+}
+
+function shiftMaxTable(direction) {
+  const unlocked = getUnlockedLevels();
+  const selectableTables = getSelectableTables(unlocked);
+  const currentValue = getSelectedMaxTable();
+  const currentIndex = selectableTables.indexOf(currentValue);
+  if (currentIndex === -1) return;
+
+  const nextIndex = direction > 0
+    ? Math.min(selectableTables.length - 1, currentIndex + 1)
+    : Math.max(0, currentIndex - 1);
+
+  setSelectedMaxTable(selectableTables[nextIndex], { unlocked });
+  updateConfigFromControls();
+}
+
+function updateTableSpinnerAria() {
+  maxTableSpinner.setAttribute('aria-valuenow', String(getSelectedMaxTable()));
+  maxTableSpinner.setAttribute('aria-valuetext', String(getSelectedMaxTable()));
+}
+
+function renderMaxTableSpinner(unlocked = getUnlockedLevels()) {
+  if (!maxTableWheel) return;
+  const selectable = new Set(getSelectableTables(unlocked));
+  const selectedIndex = TABLE_WHEEL_VALUES.indexOf(getSelectedMaxTable());
+  maxTableWheel.innerHTML = '';
+
+  TABLE_WHEEL_VALUES.forEach((value) => {
+    const item = document.createElement('li');
+    item.className = 'table-wheel__item';
+    item.textContent = String(value);
+    if (value === getSelectedMaxTable()) item.classList.add('is-selected');
+    if (!selectable.has(value)) item.classList.add('is-locked');
+    maxTableWheel.appendChild(item);
+  });
+
+  const offset = TABLE_WHEEL_STEP_PIXELS - (selectedIndex * TABLE_WHEEL_STEP_PIXELS);
+  maxTableWheel.style.transform = `translateY(${offset}px)`;
+  updateTableSpinnerAria();
+}
+
+function pickTableByDragOffset(offsetPx, startValue) {
+  const unlocked = getUnlockedLevels();
+  const selectableTables = getSelectableTables(unlocked);
+  const startIndex = selectableTables.indexOf(startValue);
+  if (startIndex === -1) return startValue;
+
+  const stepDelta = Math.round(-offsetPx / TABLE_WHEEL_STEP_PIXELS);
+  const targetIndex = Math.min(
+    selectableTables.length - 1,
+    Math.max(0, startIndex + stepDelta),
+  );
+
+  return selectableTables[targetIndex];
 }
 
 function applyLevelLocks() {
@@ -610,15 +710,10 @@ function applyLevelLocks() {
     setButtonSelection(mixedModifierBtn, false);
   }
 
-  Array.from(maxTableSelect.options).forEach((opt) => {
-    const value = Number(opt.value);
-    const singleUnlocked = unlocked.has(configKey({ mode: 'single', maxTable: value }));
-    const mixedUnlocked = unlocked.has(configKey({ mode: 'mixed', maxTable: value }));
-    opt.disabled = !(singleUnlocked || mixedUnlocked);
-  });
+  setSelectedMaxTable(getSelectedMaxTable(), { unlocked });
 
   const selectedMode = getMode();
-  const selectedMax = Number(maxTableSelect.value);
+  const selectedMax = getSelectedMaxTable();
   const selectedUnlocked = unlocked.has(configKey({ mode: selectedMode, maxTable: selectedMax }));
   if (!selectedUnlocked) {
     ensureGameConfigIsUnlocked();
@@ -646,7 +741,7 @@ function applyTranslations() {
     el.textContent = t(el.dataset.i18n);
   });
 
-  maxTableSelect.setAttribute('aria-label', t('aria.highestTimesTable'));
+  maxTableSpinner.setAttribute('aria-label', t('aria.highestTimesTable'));
   answerInput.setAttribute('aria-label', t('aria.yourAnswer'));
   languageSelect.setAttribute('aria-label', t('aria.language'));
   openLanguageBtn.setAttribute('aria-label', t('aria.openLanguage'));
@@ -766,13 +861,6 @@ updateBtn.addEventListener('click', () => {
 });
 
 dismissUpdateBtn.addEventListener('click', hideUpdateBanner);
-
-for (let i = 2; i <= 12; i += 1) {
-  const option = document.createElement('option');
-  option.value = String(i);
-  option.textContent = `${i}`;
-  maxTableSelect.appendChild(option);
-}
 
 let gameConfig = { maxTable: 2, mode: 'single', operation: 'multiply', questionMode: 'standard' };
 let score = 0;
@@ -1359,7 +1447,7 @@ window.addEventListener('resize', () => {
 
 startBtn.addEventListener('click', () => {
   gameConfig = {
-    maxTable: Number(maxTableSelect.value),
+    maxTable: getSelectedMaxTable(),
     mode: getMode(),
     operation: getOperation(),
     questionMode: getQuestionMode(),
@@ -1443,7 +1531,7 @@ document.addEventListener('keydown', (event) => {
 playAgainBtn.addEventListener('click', () => {
   showOnly(setupScreen);
   gameConfig = {
-    maxTable: Number(maxTableSelect.value),
+    maxTable: getSelectedMaxTable(),
     mode: getMode(),
     operation: getOperation(),
     questionMode: getQuestionMode(),
@@ -1509,7 +1597,7 @@ document.addEventListener('keydown', (event) => {
 
 
 function updateConfigFromControls() {
-  gameConfig = { maxTable: Number(maxTableSelect.value), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
+  gameConfig = { maxTable: getSelectedMaxTable(), mode: getMode(), operation: getOperation(), questionMode: getQuestionMode() };
   ensureGameConfigIsUnlocked();
   syncSelectorsFromGameConfig();
   renderLeaderboard(gameConfig);
@@ -1533,8 +1621,51 @@ modifierButtons.forEach((button) => {
   });
 });
 
-maxTableSelect.addEventListener('change', () => {
-  updateConfigFromControls();
+maxTableSpinner.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    shiftMaxTable(1);
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    shiftMaxTable(-1);
+  }
+});
+
+maxTableSpinner.addEventListener('pointerdown', (event) => {
+  maxTableSpinner.setPointerCapture(event.pointerId);
+  tableWheelDragState = {
+    pointerId: event.pointerId,
+    startY: event.clientY,
+    startValue: getSelectedMaxTable(),
+    hasMoved: false,
+  };
+});
+
+maxTableSpinner.addEventListener('pointermove', (event) => {
+  if (!tableWheelDragState || tableWheelDragState.pointerId !== event.pointerId) return;
+  const delta = event.clientY - tableWheelDragState.startY;
+  const nextValue = pickTableByDragOffset(delta, tableWheelDragState.startValue);
+  if (nextValue !== getSelectedMaxTable()) {
+    tableWheelDragState.hasMoved = true;
+    setSelectedMaxTable(nextValue);
+  }
+});
+
+maxTableSpinner.addEventListener('pointerup', (event) => {
+  if (!tableWheelDragState || tableWheelDragState.pointerId !== event.pointerId) return;
+  maxTableSpinner.releasePointerCapture(event.pointerId);
+  if (tableWheelDragState.hasMoved) {
+    updateConfigFromControls();
+  }
+  tableWheelDragState = null;
+});
+
+maxTableSpinner.addEventListener('pointercancel', (event) => {
+  if (!tableWheelDragState || tableWheelDragState.pointerId !== event.pointerId) return;
+  if (maxTableSpinner.hasPointerCapture(event.pointerId)) {
+    maxTableSpinner.releasePointerCapture(event.pointerId);
+  }
+  tableWheelDragState = null;
 });
 
 vehicleColorInput.addEventListener('input', () => {

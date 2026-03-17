@@ -386,6 +386,65 @@ button {
   font-size: 1.1rem;
 }
 
+
+.table-wheel {
+  --wheel-step: 44px;
+  margin-top: 8px;
+  border: 1px solid #c8d8ec;
+  border-radius: 12px;
+  background: #fff;
+  user-select: none;
+  touch-action: none;
+}
+
+.table-wheel:focus-visible {
+  outline: 3px solid #7eb2f0;
+  outline-offset: 2px;
+}
+
+.table-wheel__window {
+  position: relative;
+  height: calc(var(--wheel-step) * 3);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%);
+}
+
+.table-wheel__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  transition: transform 120ms ease-out;
+}
+
+.table-wheel__item {
+  height: var(--wheel-step);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  color: #4f6483;
+}
+
+.table-wheel__item.is-selected {
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.table-wheel__item.is-locked {
+  opacity: 0.35;
+}
+
+.table-wheel__selection {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: var(--wheel-step);
+  height: var(--wheel-step);
+  border: 2px solid #bfd5f3;
+  border-radius: 10px;
+  pointer-events: none;
+}
 fieldset {
   border: 1px solid #d7e4f4;
   border-radius: 10px;
